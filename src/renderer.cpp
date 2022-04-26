@@ -9,7 +9,25 @@
 #include "utils.h"
 #include "scene.h"
 #include "extra/hdre.h"
+#include <algorithm>
 
+
+
+//function to calculate distance between two vector3;
+float distance(Vector3 a, Vector3 b)
+{
+	return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2) + pow(a.z - b.z, 2));
+}
+
+//Note to self, this is for < operator
+bool transparencySort(const GTR::RenderCall a, const GTR::RenderCall b) {
+	if (b.material->alpha_mode > 0 && a.material->alpha_mode > 0) //if both transparent order from far to near
+		return a.distance_to_camera > b.distance_to_camera;
+	else if (b.material->alpha_mode == 0 && a.material->alpha_mode == 0) //if both opaque order from near to far
+		return a.distance_to_camera < b.distance_to_camera;
+	else
+		return a.material->alpha_mode == 0; //else put opaque before transparent
+}
 
 using namespace GTR;
 
@@ -23,6 +41,9 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 	checkGLErrors();
 
 	//render entities
+
+	this->render_calls.clear();
+	
 	for (int i = 0; i < scene->entities.size(); ++i)
 	{
 		BaseEntity* ent = scene->entities[i];
@@ -33,9 +54,17 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		if (ent->entity_type == PREFAB)
 		{
 			PrefabEntity* pent = (GTR::PrefabEntity*)ent;
-			if(pent->prefab)
+			if (pent->prefab) {
 				renderPrefab(ent->model, pent->prefab, camera);
+				
+			}
 		}
+	}
+	std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
+	for (int i = 0; i < this->render_calls.size(); ++i){
+		RenderCall& rc = this->render_calls[i];
+		renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);
+		
 	}
 }
 
@@ -66,8 +95,16 @@ void Renderer::renderNode(const Matrix44& prefab_model, GTR::Node* node, Camera*
 		if (camera->testBoxInFrustum(world_bounding.center, world_bounding.halfsize) )
 		{
 			//render node mesh
-			renderMeshWithMaterial( node_model, node->mesh, node->material, camera );
+			//renderMeshWithMaterial( node_model, node->mesh, node->material, camera );
 			//node->mesh->renderBounding(node_model, true);
+			RenderCall rc;
+			Vector3 nodepos = node_model.getTranslation();
+			rc.mesh = node->mesh;
+			rc.material = node->material;
+			rc.model = node_model;
+			rc.distance_to_camera = distance(nodepos,camera->eye);
+			this->render_calls.push_back(rc);
+			
 		}
 	}
 

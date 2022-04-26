@@ -11,9 +11,20 @@ namespace GTR {
 	
 	// This class is in charge of rendering anything in our system.
 	// Separating the render from anything else makes the code cleaner
+
+	class RenderCall {
+	public:
+		Mesh* mesh;
+		Material* material;
+		Matrix44 model;
+		
+		float distance_to_camera;
+	};
+
 	class Renderer
 	{
-
+	private:
+		std::vector<RenderCall> render_calls;
 	public:
 
 		//add here your functions
