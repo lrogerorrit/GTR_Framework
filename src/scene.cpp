@@ -127,6 +127,8 @@ GTR::BaseEntity* GTR::Scene::createEntity(std::string type)
 {
 	if (type == "PREFAB")
 		return new GTR::PrefabEntity();
+	else if (type=="LIGHT")
+		return new GTR::LightEntity();
     return NULL;
 }
 

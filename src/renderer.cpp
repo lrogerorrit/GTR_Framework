@@ -60,7 +60,8 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 			}
 		}
 	}
-	std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
+	if (this->orderNodes)
+		std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
 	for (int i = 0; i < this->render_calls.size(); ++i){
 		RenderCall& rc = this->render_calls[i];
 		renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);

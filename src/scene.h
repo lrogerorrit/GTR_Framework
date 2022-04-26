@@ -41,6 +41,17 @@ namespace GTR {
 		virtual void configure(cJSON* json) {}
 	};
 
+	class LightEntity : public GTR::BaseEntity
+	{
+	public:
+		Vector3 color;
+		float intensity;
+		
+		LightEntity();
+		virtual void renderInMenu();
+		virtual void configure(cJSON* json);
+	};
+
 	//represents one prefab in the scene
 	class PrefabEntity : public GTR::BaseEntity
 	{

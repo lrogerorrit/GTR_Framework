@@ -241,9 +241,19 @@ void Application::renderDebugGUI(void)
 #ifndef SKIP_IMGUI //to block this code from compiling if we want
 
 	//System stats
+
+	
+	bool test = true;
 	ImGui::Text(getGPUStats().c_str());					   // Display some text (you can use a format strings too)
+	if (ImGui::CollapsingHeader("Visual Options")) {
+		ImGui::Checkbox("Alpha Sorting",&renderer->orderNodes);
+		ImGui::Separator();
+		
+		
+	}
 
 	ImGui::Checkbox("Wireframe", &render_wireframe);
+	
 	ImGui::ColorEdit3("BG color", scene->background_color.v);
 	ImGui::ColorEdit3("Ambient Light", scene->ambient_light.v);
 
@@ -277,6 +287,7 @@ void Application::renderDebugGUI(void)
 	}
 
 	ImGui::PopStyleColor();
+	
 #endif
 }
 

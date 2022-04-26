@@ -26,6 +26,8 @@ namespace GTR {
 	private:
 		std::vector<RenderCall> render_calls;
 	public:
+		bool orderNodes = true;
+		
 
 		//add here your functions
 		//...
