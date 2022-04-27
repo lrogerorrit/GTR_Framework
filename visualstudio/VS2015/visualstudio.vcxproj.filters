@@ -117,6 +117,9 @@
     <ClCompile Include="..\..\src\task.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\entities\lightEntity.cpp">
+      <Filter>pipeline\entities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\extra\textparser.h">
@@ -231,6 +234,9 @@
     <ClInclude Include="..\..\src\task.h">
       <Filter>utils</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\entities\lightEntity.h">
+      <Filter>pipeline\entities</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="extra">
@@ -250,6 +256,9 @@
     </Filter>
     <Filter Include="pipeline">
       <UniqueIdentifier>{fe388127-614b-4a49-b829-ae6e56f88a34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="pipeline\entities">
+      <UniqueIdentifier>{eee6f290-3dc4-4443-833d-2e991d2626aa}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

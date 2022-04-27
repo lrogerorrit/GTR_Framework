@@ -133,6 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\camera.cpp" />
+    <ClCompile Include="..\..\src\entities\lightEntity.cpp" />
     <ClCompile Include="..\..\src\extra\cJSON.cpp" />
     <ClCompile Include="..\..\src\extra\coldet\box.cpp" />
     <ClCompile Include="..\..\src\extra\coldet\box_bld.cpp" />
@@ -179,6 +180,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\camera.h" />
+    <ClInclude Include="..\..\src\entities\lightEntity.h" />
     <ClInclude Include="..\..\src\extra\cJSON.h" />
     <ClInclude Include="..\..\src\extra\coldet\box.h" />
     <ClInclude Include="..\..\src\extra\coldet\coldet.h" />

@@ -22,6 +22,13 @@ namespace GTR {
 		REFLECTION_PROBE = 4,
 		DECALL = 5
 	};
+	
+	enum class eLightType {
+		POINT,
+		DIRECTIONAL,
+		SPOT,
+	
+	};
 
 	class Scene;
 	class Prefab;
@@ -46,6 +53,7 @@ namespace GTR {
 	public:
 		Vector3 color;
 		float intensity;
+		eLightType light_type;
 		
 		LightEntity();
 		virtual void renderInMenu();
@@ -73,6 +81,7 @@ namespace GTR {
 		Vector3 background_color;
 		Vector3 ambient_light;
 		Camera main_camera;
+		
 
 		Scene();
 

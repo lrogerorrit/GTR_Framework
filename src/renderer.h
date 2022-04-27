@@ -6,6 +6,11 @@ class Camera;
 
 namespace GTR {
 
+	enum class eMultiLightType {
+		SINGLE_PASS,
+		MULTI_PASS,
+	};
+
 	class Prefab;
 	class Material;
 	
@@ -25,8 +30,13 @@ namespace GTR {
 	{
 	private:
 		std::vector<RenderCall> render_calls;
+		std::vector<GTR::LightEntity*> lights;
+
+		
+		
 	public:
 		bool orderNodes = true;
+		int multiLightType = (int) eMultiLightType::SINGLE_PASS;
 		
 
 		//add here your functions

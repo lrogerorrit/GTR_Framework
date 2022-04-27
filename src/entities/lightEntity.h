@@ -1,6 +1,6 @@
 #pragma once
 
-using namespace GTR;
+
 
 /*class  GTR::BaseEntity;
 

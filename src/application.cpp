@@ -247,6 +247,10 @@ void Application::renderDebugGUI(void)
 	ImGui::Text(getGPUStats().c_str());					   // Display some text (you can use a format strings too)
 	if (ImGui::CollapsingHeader("Visual Options")) {
 		ImGui::Checkbox("Alpha Sorting",&renderer->orderNodes);
+		ImGui::RadioButton("Single pass", &renderer->multiLightType,(int) GTR::eMultiLightType::SINGLE_PASS);
+		ImGui::SameLine();
+		ImGui::RadioButton("Multipass", &renderer->multiLightType, (int) GTR::eMultiLightType::MULTI_PASS);
+		
 		ImGui::Separator();
 		
 		
