@@ -4,6 +4,7 @@ texture basic.vs texture.fs
 singlePass basic.vs singlePass.fs
 multiPass basic.vs multiPass.fs
 noLights basic.vs noLights.fs
+flatShader basic.vs flat.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
@@ -167,10 +168,13 @@ uniform float u_light_max_distance;
 uniform vec3 u_light_position;
 uniform vec3 u_light_color;
 uniform int  u_light_type;
-
+uniform vec3 u_light_vector;
 
 uniform vec3 u_ambient_light;
 uniform vec3 u_target_pos;
+uniform float u_spotCosineCuttof;
+uniform float u_cone_exp;
+uniform float u_cone_angle;
 
 
 out vec4 FragColor;
@@ -187,29 +191,40 @@ void main()
 		discard;
 
 	vec3 light = vec3(u_ambient_light);
-	if (u_ambient_light==1) //Directional Light
+	if (u_light_type==1) //Directional Light
 	{
-	L= u_light_position- u_target_pos;
+	L= -normalize(u_light_vector);
 	}else{
-	L= u_light_position- v_world_position;
+	L= (u_light_position- v_world_position);
+	
 	}
 	float light_dist= length(L);
 	L/=light_dist;
 	
 	float att_factor = u_light_max_distance - light_dist;
-
+	float spotFactor=1.0;
+	if (u_spotCosineCuttof>0.0){
+		vec3 D= u_light_vector;
+		float spotCosine= dot(D,L);
+		if (spotCosine> u_spotCosineCuttof){
+			spotFactor= pow(spotCosine,u_cone_exp);
+		}else{
+			spotFactor=0;
+		}
+	}
 	
-			
 	att_factor /= u_light_max_distance;
 	att_factor*=pow(att_factor,2.0);
 
 	//ignore negative values
 	att_factor = max( att_factor, 0.0 );
-
+	if(u_light_type==1||u_light_type==2){
+		att_factor=1;
+	}
 
 	float NdotL = max( dot(L,N), 0.0 );
 	//apply to amount of light
-	light += ( NdotL * u_light_color) * att_factor;
+	light += ( NdotL * u_light_color) * att_factor*spotFactor;
 	color.xyz *= light;
 	
 	
@@ -309,6 +324,13 @@ void main()
 
 	FragColor = color;
 	NormalColor = vec4(N,1.0);
+}
+
+\flat.fs
+out vec4 FragColor;
+
+void main(){
+FragColor=vec4(1.0,1.0,1.0,1.0);
 }
 
 

@@ -15,6 +15,8 @@ GTR::LightEntity::LightEntity() {
 	cone_exp = 100;
 	cast_shadows = false;
 	area_size = 1.5;
+	lightDirection.set(0,-1,0);
+	
 	
 	
 	
@@ -31,14 +33,12 @@ void GTR::LightEntity::renderInMenu() {
 	
 	switch (light_type) {
 		case (eLightType::SPOT): 
-			ImGui::DragFloat("Cone Angle", &intensity,.1f);
+			ImGui::DragFloat("Cone Angle", &cone_angle,.1f);
 			ImGui::DragFloat("Cone Exponent",&cone_exp,.1f);
-			break;
-		case (eLightType::DIRECTIONAL):
-			ImGui::DragInt3("Target", (int*)target.v);
-
+			
 			break;
 	}
+	ImGui::SliderFloat3("Light Direction", lightDirection.v, -1, 1);
 	
 	
 	//TODO
@@ -55,12 +55,32 @@ void GTR::LightEntity::configure(cJSON* json)
 	cone_exp = readJSONNumber(json, "cone_exp", cone_exp);
 	area_size= readJSONNumber(json, "area_size", area_size);
 	target = readJSONVector3(json, "target", target);
+	cast_shadows = readJSONBool(json, "cast_shadows", false);
+
+	
 	
 	if (str == "POINT")
 		light_type = eLightType::POINT;
-	else if (str == "SPOT")
+	else if (str == "SPOT") {
 		light_type = eLightType::SPOT;
+		this->lightDirection = this->model.frontVector();
+		
+	}
 	else if (str == "DIRECTIONAL")
 		light_type = eLightType::DIRECTIONAL;
 	
+	if (cast_shadows) {
+		this->shadow_cam = new Camera();
+		if (this->light_type == eLightType::DIRECTIONAL) {
+			shadow_cam->lookAt(scene->main_camera.eye * this->model.frontVector() * -50, scene->main_camera.center, scene->main_camera.up);
+			shadow_cam->setOrthographic(this->area_size / 2, this->area_size / 2, this->area_size / 2, this->area_size / 2, 10, this->max_distance * .7);
+		}
+		else {
+			shadow_cam->lookAt(this->model);
+			shadow_cam->setPerspective(90, 1, 0.1, max_distance);
+		}
+	}
+
 }
+
+

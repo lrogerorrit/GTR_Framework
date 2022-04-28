@@ -53,6 +53,8 @@ namespace GTR {
 
 		//to render one mesh given its material and transformation matrix
 		void renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
+
+		void renderShadowMaps();
 	};
 
 	Texture* CubemapFromHDRE(const char* filename);

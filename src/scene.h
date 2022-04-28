@@ -4,6 +4,7 @@
 #include "framework.h"
 #include "camera.h"
 #include <string>
+#include "fbo.h"
 
 //forward declaration
 class cJSON; 
@@ -60,10 +61,14 @@ namespace GTR {
 		float cone_exp;
 		float area_size;
 		bool cast_shadows;
+		Vector3 lightDirection;
+		Camera* shadow_cam= nullptr;
+		FBO* shadow_fbo= nullptr;
 		
 		LightEntity();
 		virtual void renderInMenu();
 		virtual void configure(cJSON* json);
+		
 	};
 
 	//represents one prefab in the scene

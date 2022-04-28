@@ -231,7 +231,27 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			shader->setUniform("u_light_position", light->model.getTranslation());
 			shader->setUniform("u_light_max_distance", light->max_distance);
 			shader->setUniform("u_light_type", (int)light->light_type);
-			shader->setUniform("u_target_pos", light->target);
+			shader->setUniform("u_light_vector", light->lightDirection);
+			shader->setUniform("u_spotCosineCuttof", 0.0f);
+			shader->setUniform("u_cone_angle", 0.0f);
+			
+			if (light->light_type== eLightType::SPOT){
+				shader->setUniform("u_cone_angle", light->cone_angle);
+				shader->setUniform("u_cone_exp", light->cone_exp);	
+				
+				//get radians of light-> cone_angle
+				
+				float radians = light->cone_angle * (float)M_PI / 180.0f;
+				
+				shader->setUniform("u_spotCosineCuttof",cos(radians));	
+				
+				
+				//get radians of cone angle
+				
+				
+					
+				
+			}
 			
 			
 			mesh->render(GL_TRIANGLES);
@@ -253,6 +273,46 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	//set the render state as it was before to avoid problems with future renders
 	glDisable(GL_BLEND);
 }
+
+void GTR::Renderer::renderShadowMaps()
+{
+	for (auto light : this->lights) {
+		if (!light->shadow_fbo)
+		{
+			light->shadow_fbo = new FBO();
+			light->shadow_fbo->setDepthOnly(1024, 1024);
+		}
+
+		//enable it to render inside the texture
+		light->shadow_fbo->bind();
+
+		//you can disable writing to the color buffer to speed up the rendering as we do not need it
+		glColorMask(false, false, false, false);
+
+		//clear the depth buffer only (don't care of color)
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+		//whatever we render here will be stored inside a texture, we don't need to do anything fanzy
+		//...
+		Shader* shader = NULL;
+		shader = Shader::Get("fboShader");
+		shader->enable();
+		for (int i = 0; i < this->render_calls.size(); ++i) {
+			RenderCall& rc = this->render_calls[i];
+			shader->setUniform("u_viewprojection", light->shadow_cam->viewprojection_matrix);
+			rc.mesh->render(GL_TRIANGLES);
+
+		}
+		shader->disable();
+		//disable it to render back to the screen
+		light->shadow_fbo->unbind();
+
+		//allow to render back to the color buffer
+		glColorMask(true, true, true, true);
+
+	}
+}
+
 
 
 Texture* GTR::CubemapFromHDRE(const char* filename)
