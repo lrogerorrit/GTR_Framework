@@ -161,7 +161,10 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
     assert(glGetError() == GL_NO_ERROR);
 
 	//chose a shader
-	shader = Shader::Get(this->multiLightType==0?"singlePass":"multiPass");
+	int num_lights = lights.size();
+	
+	shader = Shader::Get(num_lights==0?"noLights":this->multiLightType == 0 ? "singlePass" : "multiPass");
+	
 
     assert(glGetError() == GL_NO_ERROR);
 
@@ -186,21 +189,27 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 
-	int num_lights = lights.size();
-	if (!num_lights) //TODO: enviar una light de intensity 0
+	if (!num_lights) {
+		mesh->render(GL_TRIANGLES);
 		return;
+	}
 
 	if (this->multiLightType ==  (int) eMultiLightType::SINGLE_PASS) {
 		Vector3 light_position[5] = {};
 		Vector3 light_color[5] = {};
+		float light_max_distance[5] = {};
 
 		for (int i = 0; i < num_lights; ++i) {
 			light_position[i] = lights[i]->model.getTranslation();
 			light_color[i] = lights[i]->color*lights[i]->intensity;
+			light_max_distance[i] = lights[i]->max_distance;
+			
 		}
 		shader->setUniform3Array("u_light_pos", (float*)&light_position, num_lights);
 		shader->setUniform3Array("u_light_color", (float*)&light_color, num_lights);
+		shader->setUniform1Array("u_max_distance", (float*)&light_max_distance, num_lights);
 		shader->setUniform1("u_num_lights", num_lights);
+
 
 	mesh->render(GL_TRIANGLES);
 	}
@@ -217,8 +226,13 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			LightEntity* light = lights[i];
 			if (i>0)
 				shader->setUniform("u_ambient_light", Vector3());
+			
 			shader->setUniform("u_light_color", light->color * light->intensity);
 			shader->setUniform("u_light_position", light->model.getTranslation());
+			shader->setUniform("u_light_max_distance", light->max_distance);
+			shader->setUniform("u_light_type", (int)light->light_type);
+			shader->setUniform("u_target_pos", light->target);
+			
 			
 			mesh->render(GL_TRIANGLES);
 			glEnable(GL_BLEND);

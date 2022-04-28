@@ -2,7 +2,8 @@
 flat basic.vs flat.fs
 texture basic.vs texture.fs
 singlePass basic.vs singlePass.fs
-multiPass basic.vs single.fs
+multiPass basic.vs multiPass.fs
+noLights basic.vs noLights.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
@@ -94,6 +95,8 @@ uniform float u_alpha_cutoff;
 const int MAX_LIGHTS= 5;
 uniform vec3 u_light_pos[MAX_LIGHTS];
 uniform vec3 u_light_color[MAX_LIGHTS];
+uniform float u_max_distance[MAX_LIGHTS];
+
 uniform int u_num_lights;
 
 uniform vec3 u_ambient_light;
@@ -116,9 +119,27 @@ void main()
 	{
 		if(i < u_num_lights)
 		{
-			vec3 L = normalize( u_light_pos[i] - v_world_position);
+			vec3 L =  u_light_pos[i] - v_world_position;
+			float light_dist= length(L);
+			L/=light_dist;
+			float att_factor = u_max_distance[i] - light_dist;
+
+
+			
+			att_factor /= u_max_distance[i];
+			
+			att_factor*=pow(att_factor,2.0);
+
+			//ignore negative values
+			att_factor = max( att_factor, 0.0 );
+
+
 			float NdotL = max( dot(L,N), 0.0 );
-			light += NdotL * u_light_color[i];
+			//apply to amount of light
+			light += ( NdotL * u_light_color[i]) * att_factor;
+
+
+
 		}
 	}
 	color.xyz *= light;
@@ -127,7 +148,7 @@ void main()
 	FragColor = color;
 }
 
-\single.fs
+\multiPass.fs
 
 #version 330 core
 
@@ -141,13 +162,15 @@ uniform vec4 u_color;
 uniform sampler2D u_texture;
 uniform float u_time;
 uniform float u_alpha_cutoff;
-
+uniform float u_light_max_distance;
 
 uniform vec3 u_light_position;
 uniform vec3 u_light_color;
+uniform int  u_light_type;
 
 
 uniform vec3 u_ambient_light;
+uniform vec3 u_target_pos;
 
 
 out vec4 FragColor;
@@ -157,18 +180,71 @@ void main()
 	vec3 N= normalize(v_normal);
 	vec2 uv = v_uv;
 	vec4 color = u_color;
+	vec3 L;
 	color *= texture( u_texture, v_uv );
 
 	if(color.a < u_alpha_cutoff)
 		discard;
 
 	vec3 light = vec3(u_ambient_light);
-	vec3 L= normalize(u_light_position- v_world_position);
-	float NdotL= clamp(dot(N,L),0.0,1.0);
-	light+= NdotL*u_light_color;
+	if (u_ambient_light==1) //Directional Light
+	{
+	L= u_light_position- u_target_pos;
+	}else{
+	L= u_light_position- v_world_position;
+	}
+	float light_dist= length(L);
+	L/=light_dist;
+	
+	float att_factor = u_light_max_distance - light_dist;
+
+	
+			
+	att_factor /= u_light_max_distance;
+	att_factor*=pow(att_factor,2.0);
+
+	//ignore negative values
+	att_factor = max( att_factor, 0.0 );
+
+
+	float NdotL = max( dot(L,N), 0.0 );
+	//apply to amount of light
+	light += ( NdotL * u_light_color) * att_factor;
 	color.xyz *= light;
 	
 	
+	FragColor = color;
+}
+
+\noLights.fs
+
+#version 330 core
+
+in vec3 v_position;
+in vec3 v_world_position;
+in vec3 v_normal;
+in vec2 v_uv;
+in vec4 v_color;
+
+uniform vec4 u_color;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform float u_alpha_cutoff;
+uniform vec3 u_ambient_light;
+
+out vec4 FragColor;
+
+
+void main()
+{
+	vec2 uv = v_uv;
+	vec4 color = u_color;
+	color *= texture( u_texture, v_uv );
+
+	if(color.a < u_alpha_cutoff)
+		discard;
+
+	color.xyz*= u_ambient_light;
 	FragColor = color;
 }
 

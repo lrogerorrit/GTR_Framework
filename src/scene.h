@@ -52,8 +52,14 @@ namespace GTR {
 	{
 	public:
 		Vector3 color;
+		Vector3 target;
 		float intensity;
 		eLightType light_type;
+		float max_distance;
+		float cone_angle;
+		float cone_exp;
+		float area_size;
+		bool cast_shadows;
 		
 		LightEntity();
 		virtual void renderInMenu();
