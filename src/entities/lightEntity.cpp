@@ -18,6 +18,7 @@ GTR::LightEntity::LightEntity() {
 	cast_shadows = false;
 	area_size = 1.5;
 	lightDirection.set(0,-1,0);
+	shadow_bias = 0.0f;
 	
 	
 	
@@ -34,7 +35,9 @@ void GTR::LightEntity::renderInMenu() {
 	ImGui::ColorEdit3("Color", color.v);
 	ImGui::DragFloat("Intensity", &intensity,.1f);
 	ImGui::DragFloat("Max Distance", &max_distance,1);
-	
+	ImGui::DragFloat("Shadow Bias", &shadow_bias,.01f);
+
+
 	switch (light_type) {
 		case (eLightType::SPOT): 
 			ImGui::DragFloat("Cone Angle", &cone_angle,.1f);
@@ -43,6 +46,7 @@ void GTR::LightEntity::renderInMenu() {
 			break;
 	}
 	ImGui::SliderFloat3("Light Direction", lightDirection.v, -1, 1);
+	
 	
 	if (this->cast_shadows) {
 		ImGui::Checkbox("Show Shadowmap", &showSM);
@@ -75,7 +79,8 @@ void GTR::LightEntity::configure(cJSON* json)
 	cone_exp = readJSONNumber(json, "cone_exp", cone_exp);
 	area_size= readJSONNumber(json, "area_size", area_size);
 	target = readJSONVector3(json, "target", target);
-	cast_shadows = readJSONBool(json, "cast_shadows", false);
+	cast_shadows = readJSONBool(json, "cast_shadows", cast_shadows);
+	shadow_bias = readJSONNumber(json, "shadow_bias", shadow_bias);
 
 	
 	
@@ -95,7 +100,7 @@ void GTR::LightEntity::configure(cJSON* json)
 		this->shadow_cam = new Camera();
 		if (this->light_type == eLightType::DIRECTIONAL) {
 			//shadow_cam->setOrthographic(this->area_size / 2, this->area_size / 2, this->area_size / 2, this->area_size / 2, .1, this->max_distance);
-			shadow_cam->setPerspective(cone_angle, 1.0, 0.1, max_distance);
+			//shadow_cam->setPerspective(cone_angle, 1.0, 0.1, max_distance);
 			//shadow_cam->lookAt(scene->main_camera.eye * this->model.frontVector() * -50, scene->main_camera.center, scene->main_camera.up);
 			
 			//shadow_cam->lookAt(this->model.getTranslation(), this->model * this->lightDirection.normalize() * Vector3(0, 0, 1), this->lightDirection.normalize() * Vector3(0, -1, 0));

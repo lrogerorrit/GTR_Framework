@@ -131,6 +131,7 @@ void Renderer::renderNode(const Matrix44& prefab_model, GTR::Node* node, Camera*
 		renderNode(prefab_model, node->children[i], camera);
 }
 
+
 //renders a mesh given its transform and material
 void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera)
 {
@@ -259,9 +260,13 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 				
 				//get radians of cone angle
 				
-				
-					
-				
+			}
+			if (light->shadow_map) {
+				shader->setUniform("u_light_cast_shadows", 1);
+				shader->setUniform("u_light_shadowmap", light->shadow_map,8);
+				shader->setUniform("u_light_shadowmap_vp",light->shadow_cam->viewprojection_matrix);
+				shader->setUniform("u_shadow_bias", light->shadow_bias);
+
 			}
 			
 			
@@ -358,7 +363,7 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 	if (light->light_type == eLightType::DIRECTIONAL) {
 		light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
 		
-		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection*50, Vector3(0, -1, 0));
+		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - light->lightDirection, Vector3(0, 1, 0));
 
 		//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
 	}

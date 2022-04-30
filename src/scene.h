@@ -60,12 +60,14 @@ namespace GTR {
 		float cone_angle;
 		float cone_exp;
 		float area_size;
+		float shadow_bias;
 		bool cast_shadows;
 		Vector3 lightDirection;
 		Camera* shadow_cam= NULL;
 		FBO* shadow_fbo= NULL;
 		Texture* shadow_map= NULL;
 		bool showSM = false;
+		
 		
 		
 		
