@@ -62,12 +62,17 @@ namespace GTR {
 		float area_size;
 		bool cast_shadows;
 		Vector3 lightDirection;
-		Camera* shadow_cam= nullptr;
-		FBO* shadow_fbo= nullptr;
+		Camera* shadow_cam= NULL;
+		FBO* shadow_fbo= NULL;
+		Texture* shadow_map= NULL;
+		bool showSM = false;
+		
+		
 		
 		LightEntity();
 		virtual void renderInMenu();
 		virtual void configure(cJSON* json);
+		
 		
 	};
 

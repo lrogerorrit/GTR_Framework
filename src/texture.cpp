@@ -583,10 +583,12 @@ Texture* Texture::getWhiteTexture()
 
 void Texture::copyTo(Texture* destination, Shader* shader)
 {
+	
 	if (!destination) //to current viewport
 	{
 		if (format == GL_DEPTH_COMPONENT) //to clone depth buffer
 		{
+			
 			glEnable(GL_DEPTH_TEST); //we need to use the depth buffer
 			glDepthFunc(GL_ALWAYS); //but ignore the test, every fragment should update the depth
 			glColorMask(false, false, false, false); //block drawing to colors
@@ -613,6 +615,7 @@ void Texture::copyTo(Texture* destination, Shader* shader)
 	fbo->bind();
 	if (!shader && format == GL_DEPTH_COMPONENT)
 	{
+		
 		shader = Shader::getDefaultShader("screen_depth");
 		glDepthFunc(GL_ALWAYS);
 		glEnable(GL_DEPTH_TEST);

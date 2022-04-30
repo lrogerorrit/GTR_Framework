@@ -4,7 +4,7 @@ texture basic.vs texture.fs
 singlePass basic.vs singlePass.fs
 multiPass basic.vs multiPass.fs
 noLights basic.vs noLights.fs
-flatShader basic.vs flat.fs
+flat basic.vs flat.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
@@ -218,7 +218,7 @@ void main()
 
 	//ignore negative values
 	att_factor = max( att_factor, 0.0 );
-	if(u_light_type==1||u_light_type==2){
+	if(u_light_type==1){
 		att_factor=1;
 	}
 
@@ -327,6 +327,9 @@ void main()
 }
 
 \flat.fs
+
+#version 330 core
+
 out vec4 FragColor;
 
 void main(){

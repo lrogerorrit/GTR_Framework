@@ -66,8 +66,19 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 			this->lights.push_back(light);
 		}
 	}
+
+	
+
 	if (this->orderNodes)
 		std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
+
+	//generate shadowmaps
+	for (int i = 0; i < lights.size(); ++i) {
+		LightEntity* light = lights[i];
+		if (light->cast_shadows)
+			generateShadowMaps(light);
+	}
+	
 	for (int i = 0; i < this->render_calls.size(); ++i){
 		RenderCall& rc = this->render_calls[i];
 		renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);
@@ -274,43 +285,117 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	glDisable(GL_BLEND);
 }
 
-void GTR::Renderer::renderShadowMaps()
+
+void Renderer::renderFlatMesh(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera) {
+	if (!mesh || !mesh->getNumVertices() || !material)
+		return;
+	assert(glGetError() == GL_NO_ERROR);
+
+	//define locals to simplify coding
+	Shader* shader = NULL;
+	GTR::Scene* scene = GTR::Scene::instance;
+	/*if (material->alpha_mode == GTR::eAlphaMode::BLEND)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+	else
+		glDisable(GL_BLEND);
+
+*/
+	//select if render both sides of the triangles
+	if (material->two_sided)
+		glDisable(GL_CULL_FACE);
+	else
+		glEnable(GL_CULL_FACE);
+	assert(glGetError() == GL_NO_ERROR);
+
+	
+	shader = Shader::Get("flat");
+	shader->enable();
+	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+	shader->setUniform("u_model", model);
+	
+	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
+	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
+
+	glDepthFunc(GL_LESS);
+	glDisable(GL_BLEND);
+	mesh->render(GL_TRIANGLES);
+	shader->disable();
+}
+
+void GTR::Renderer::generateShadowMaps(LightEntity* light)
 {
-	for (auto light : this->lights) {
-		if (!light->shadow_fbo)
-		{
-			light->shadow_fbo = new FBO();
-			light->shadow_fbo->setDepthOnly(1024, 1024);
+	if (!light->cast_shadows) {
+		if (light->shadow_fbo) {
+			delete light->shadow_fbo;
+			light->shadow_fbo = NULL;
+			light->shadow_map = NULL;
+			
 		}
+	
+	};
+	
+	if (!light->shadow_fbo)
+	{
+		light->shadow_fbo = new FBO();
+		light->shadow_fbo->setDepthOnly(1024,1024);
+		light->shadow_map = light->shadow_fbo->depth_texture;
+	}
+	Camera* view_cam = Camera::current;
+	
+	if (!light->shadow_cam)
+		light->shadow_cam = new Camera();
 
-		//enable it to render inside the texture
-		light->shadow_fbo->bind();
+	//enable it to render inside the texture
+	light->shadow_fbo->bind();
 
-		//you can disable writing to the color buffer to speed up the rendering as we do not need it
-		glColorMask(false, false, false, false);
+	
+	
+	//you can disable writing to the color buffer to speed up the rendering as we do not need it
+	
+	if (light->light_type == eLightType::DIRECTIONAL) {
+		light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
+		
+		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection*50, Vector3(0, -1, 0));
 
-		//clear the depth buffer only (don't care of color)
-		glClear(GL_DEPTH_BUFFER_BIT);
+		//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
+	}
+	else if(light->light_type== eLightType::SPOT) {
+		light->shadow_cam->setPerspective(light->cone_angle, 1.0, 0.1, light->max_distance);
+		light->shadow_cam->lookAt(light->model.getTranslation(), light->model * Vector3(0, 0, -1), light->model.rotateVector(Vector3(0, 1, 0)));
+	}
+		light->shadow_cam->enable();
+	glColorMask(false, false, false, false);
 
-		//whatever we render here will be stored inside a texture, we don't need to do anything fanzy
-		//...
-		Shader* shader = NULL;
-		shader = Shader::Get("fboShader");
-		shader->enable();
-		for (int i = 0; i < this->render_calls.size(); ++i) {
-			RenderCall& rc = this->render_calls[i];
-			shader->setUniform("u_viewprojection", light->shadow_cam->viewprojection_matrix);
-			rc.mesh->render(GL_TRIANGLES);
+	//clear the depth buffer only (don't care of color)
+	glClear(GL_DEPTH_BUFFER_BIT);
 
-		}
-		shader->disable();
-		//disable it to render back to the screen
-		light->shadow_fbo->unbind();
-
-		//allow to render back to the color buffer
-		glColorMask(true, true, true, true);
+	//whatever we render here will be stored inside a texture, we don't need to do anything fanzy
+	//...
+	/*Shader* shader = NULL;
+	shader = Shader::Get("flat");
+	shader->enable();*/
+	
+	for (int i = 0; i < this->render_calls.size(); ++i) {
+		RenderCall& rc = this->render_calls[i];
+		if (rc.material->alpha_mode == eAlphaMode::BLEND)
+			continue;
+		renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam);
+		//shader->setUniform("u_viewprojection", light->shadow_cam->viewprojection_matrix);
+		//rc.mesh->render(GL_TRIANGLES);
 
 	}
+	
+	//disable it to render back to the screen
+	light->shadow_fbo->unbind();
+
+	//allow to render back to the color buffer
+	glColorMask(true, true, true, true);
+
+	view_cam->enable();
+
 }
 
 
