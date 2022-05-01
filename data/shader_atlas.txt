@@ -90,13 +90,32 @@ in vec4 v_color;
 
 uniform vec4 u_color;
 uniform sampler2D u_texture;
+
+uniform sampler2D u_shadow_texture0;
+uniform sampler2D u_shadow_texture1;
+uniform sampler2D u_shadow_texture2;
+uniform sampler2D u_shadow_texture3;
+uniform sampler2D u_shadow_texture4;
+
 uniform float u_time;
 uniform float u_alpha_cutoff;
 
 const int MAX_LIGHTS= 5;
-uniform vec3 u_light_pos[MAX_LIGHTS];
+uniform vec3 u_light_position[MAX_LIGHTS];
 uniform vec3 u_light_color[MAX_LIGHTS];
-uniform float u_max_distance[MAX_LIGHTS];
+uniform float u_light_max_distance[MAX_LIGHTS];
+uniform int u_light_type[MAX_LIGHTS];
+uniform vec3 u_light_vector[MAX_LIGHTS];
+uniform float u_cone_angle[MAX_LIGHTS];
+uniform float u_cosine_cutoff[MAX_LIGHTS];
+uniform float u_cone_exp[MAX_LIGHTS];
+uniform int u_cast_shadow[MAX_LIGHTS];
+uniform mat4 u_shadow_map_vp[MAX_LIGHTS];
+uniform float u_shadowBias[MAX_LIGHTS];
+
+
+
+
 
 uniform int u_num_lights;
 
@@ -105,43 +124,119 @@ uniform vec3 u_ambient_light;
 
 out vec4 FragColor;
 
+
+sampler2D getShadowTexture(int lightNum){
+	if (lightNum==0)
+		return u_shadow_texture0;
+	else if (lightNum==1)
+		return u_shadow_texture1;
+	else if (lightNum==2)
+		return u_shadow_texture2;
+	else if (lightNum==3)
+		return u_shadow_texture3;
+	else if (lightNum==4)
+		return u_shadow_texture4;
+		
+
+}
+
+float getShadowAttenuation(vec3 pos,int lightNum, in sampler2D shadowMap)
+{
+	
+
+	//project our 3D position to the shadowmap
+	vec4 proj_pos = u_shadow_map_vp[lightNum] * vec4(pos,1.0);
+
+	//from homogeneus space to clip space
+	vec2 shadow_uv = proj_pos.xy / proj_pos.w;
+
+	//from clip space to uv space
+	shadow_uv = shadow_uv * 0.5 + vec2(0.5);
+
+	//get point depth [-1 .. +1] in non-linear space
+	float real_depth = (proj_pos.z - u_shadowBias[lightNum]) / proj_pos.w;
+
+	//normalize from [-1..+1] to [0..+1] still non-linear
+	real_depth = real_depth * 0.5 + 0.5;
+
+	//read depth from depth buffer in [0..+1] non-linear
+	float shadow_depth = texture( shadowMap, shadow_uv).x;
+
+	//compute final shadow factor by comparing
+	float shadow_factor = 1.0;
+
+	//we can compare them, even if they are not linear
+	if( shadow_depth < real_depth ){
+		shadow_factor = 0.0;
+	}
+	return shadow_factor;
+
+}
+
+
 void main()
 {
 	vec3 N= normalize(v_normal);
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	color *= texture( u_texture, v_uv );
+	float spotFactor=1.0;
+	
 
 	if(color.a < u_alpha_cutoff)
 		discard;
 
 	vec3 light = vec3(u_ambient_light);
+	
 	for( int i = 0; i < MAX_LIGHTS; ++i )
 	{
 		if(i < u_num_lights)
 		{
-			vec3 L =  u_light_pos[i] - v_world_position;
+			vec3 L;
+
+			float spotFactor=1.0;
+			float shadowFactor=1.0;
+			
+			if (u_light_type[i]==1){ //Directional light
+				L= normalize(u_light_vector[i]);
+			}else{
+				L = (u_light_position[i] - v_world_position);
+			}
+			
 			float light_dist= length(L);
 			L/=light_dist;
-			float att_factor = u_max_distance[i] - light_dist;
+			float att_factor = u_light_max_distance[i] - light_dist;
 
-
+			if(u_light_type[i]==2){ //spot light
+				vec3 D= u_light_vector[i];
+				float spotCosine= dot(D,L);
+				if (spotCosine> u_cosine_cutoff[i])
+					spotFactor= pow(spotCosine,u_cone_exp[i]);
+				else
+					spotFactor=0.0;
+			}
 			
-			att_factor /= u_max_distance[i];
+			if(u_cast_shadow[i]==1){
+				shadowFactor=getShadowAttenuation(v_world_position,i,getShadowTexture(i));
+			}
 			
+			att_factor /= u_light_max_distance[i];
 			att_factor*=pow(att_factor,2.0);
 
 			//ignore negative values
 			att_factor = max( att_factor, 0.0 );
+			if(u_light_type[i]==1)
+				att_factor=1.0;
 
 
 			float NdotL = max( dot(L,N), 0.0 );
 			//apply to amount of light
-			light += ( NdotL * u_light_color[i]) * att_factor;
+			light += ( NdotL * u_light_color[i]) * att_factor*spotFactor*shadowFactor;
 
 
 
 		}
+		
 	}
 	color.xyz *= light;
 	
@@ -225,6 +320,7 @@ void main()
 	vec4 color = u_color;
 	vec3 L;
 	color *= texture( u_texture, v_uv );
+	float spotFactor=1.0;
 
 	if(color.a < u_alpha_cutoff)
 		discard;
@@ -232,17 +328,20 @@ void main()
 	vec3 light = vec3(u_ambient_light);
 	if (u_light_type==1) //Directional Light
 	{
-	L= -normalize(u_light_vector);
+		L= normalize(u_light_vector);
 	}else{
 	L= (u_light_position- v_world_position);
 	
 	}
+	
+	
 	float light_dist= length(L);
+
 	L/=light_dist;
 	
 	float att_factor = u_light_max_distance - light_dist;
-	float spotFactor=1.0;
-	if (u_spotCosineCuttof>0.0){
+	
+	if (u_light_type==2){
 		vec3 D= u_light_vector;
 		float spotCosine= dot(D,L);
 		if (spotCosine> u_spotCosineCuttof){

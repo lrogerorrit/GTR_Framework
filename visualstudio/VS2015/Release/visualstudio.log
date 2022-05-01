@@ -1,13 +1,21 @@
-﻿  lightEntity.cpp
+﻿  renderer.cpp
 C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(104,1): warning C4099: 'cJSON': type name first seen using 'class' now seen using 'struct'
 C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(103): message : see declaration of 'cJSON'
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\entities\lightEntity.cpp(109,65): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(22,13): warning C4244: 'return': conversion from 'double' to 'float', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(58,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(88,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(94,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(142,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(205,10): warning C4244: 'initializing': conversion from 'long' to 'float', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(425,151): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(432,85): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(447,20): warning C4018: '<': signed/unsigned mismatch
      Creating library ..\..\framework.lib and object ..\..\framework.exp
 LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Generating code
-  1 of 4448 functions (<0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    50 functions had inline decision re-evaluated but remain unchanged
+  41 of 4478 functions ( 0.9%) were compiled, the rest were copied from previous compilation.
+    29 functions were new in current compilation
+    65 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
 LINK : warning LNK4286: symbol '___glewDeleteBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
 LINK : warning LNK4286: symbol '___glewLinkProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'

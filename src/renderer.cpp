@@ -9,9 +9,12 @@
 #include "utils.h"
 #include "scene.h"
 #include "extra/hdre.h"
+#include "framework.h"
 #include <algorithm>
+#include <string>
 
 
+using namespace GTR;
 
 //function to calculate distance between two vector3;
 float distance(Vector3 a, Vector3 b)
@@ -19,8 +22,9 @@ float distance(Vector3 a, Vector3 b)
 	return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2) + pow(a.z - b.z, 2));
 }
 
+
 //Note to self, this is for < operator
-bool transparencySort(const GTR::RenderCall a, const GTR::RenderCall b) {
+bool transparencySort(const GTR::RenderCall& a, const GTR::RenderCall& b) {
 	if (b.material->alpha_mode > 0 && a.material->alpha_mode > 0) //if both transparent order from far to near
 		return a.distance_to_camera > b.distance_to_camera;
 	else if (b.material->alpha_mode == 0 && a.material->alpha_mode == 0) //if both opaque order from near to far
@@ -29,7 +33,13 @@ bool transparencySort(const GTR::RenderCall a, const GTR::RenderCall b) {
 		return a.material->alpha_mode == 0; //else put opaque before transparent
 }
 
-using namespace GTR;
+bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
+	
+	return (int)a->cast_shadows >= (int)b->cast_shadows;
+}
+	
+
+
 
 void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 {
@@ -71,6 +81,8 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 
 	if (this->orderNodes)
 		std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
+	std::sort(this->lights.begin(), this->lights.end(), lightSort);
+	
 
 	//generate shadowmaps
 	for (int i = 0; i < lights.size(); ++i) {
@@ -175,6 +187,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	//chose a shader
 	int num_lights = lights.size();
 	
+	
 	shader = Shader::Get(num_lights==0?"noLights":this->multiLightType == 0 ? "singlePass" : "multiPass");
 	
 
@@ -206,20 +219,66 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		return;
 	}
 
-	if (this->multiLightType ==  (int) eMultiLightType::SINGLE_PASS) {
-		Vector3 light_position[5] = {};
-		Vector3 light_color[5] = {};
-		float light_max_distance[5] = {};
+	if (this->multiLightType == (int)eMultiLightType::SINGLE_PASS) {
+		const int maxLights = 5;
+		Vector3 light_position[maxLights] = {};
+		Vector3 light_color[maxLights] = {};
+		float light_max_distance[maxLights] = {};
+		int light_type[maxLights] = {};
+		Vector3 light_vector[maxLights] = {};
+		float spotCosineCuttof[maxLights] = {};
+		float coneAngle[maxLights] = {};
+		float coneExp[maxLights] = {};
+		
+		int light_cast_shadows[maxLights] = {};
+		//Texture* light_shadowmap[maxLights] = {};
+		Matrix44 light_shadowmap_vp[maxLights] = {};
+		float shadowBias[maxLights] = {};
+		
+		
 
 		for (int i = 0; i < num_lights; ++i) {
 			light_position[i] = lights[i]->model.getTranslation();
-			light_color[i] = lights[i]->color*lights[i]->intensity;
+			light_color[i] = lights[i]->color * lights[i]->intensity;
 			light_max_distance[i] = lights[i]->max_distance;
+			light_type[i] = (int)lights[i]->light_type;
+			light_vector[i] = lights[i]->lightDirection;
+			coneAngle[i] = lights[i]->cone_angle;
+			spotCosineCuttof[i] = cos((float)(DEG2RAD * lights[i]->cone_angle));
+			coneExp[i] = lights[i]->cone_exp;
+			light_cast_shadows[i] = (lights[i]->shadow_map && lights[i]->cast_shadows);
+			//light_shadowmap[i] = lights[i]->shadow_map;
+			shadowBias[i] = lights[i]->shadow_bias;
 			
-		}
-		shader->setUniform3Array("u_light_pos", (float*)&light_position, num_lights);
+			std::string textureName= "u_shadow_texture"+std::to_string(i);
+			if ((lights[i]->shadow_map && lights[i]->cast_shadows)) {
+				shader->setUniform(textureName.c_str(), lights[i]->shadow_map, 8 + i);
+				light_shadowmap_vp[i] = lights[i]->shadow_cam->viewprojection_matrix;
+			}
+	
+		};
+		
+		shader->setUniform3Array("u_light_position", (float*)&light_position, num_lights);
 		shader->setUniform3Array("u_light_color", (float*)&light_color, num_lights);
-		shader->setUniform1Array("u_max_distance", (float*)&light_max_distance, num_lights);
+		shader->setUniform1Array("u_light_max_distance", (float*)&light_max_distance, num_lights);
+		shader->setUniform1Array("u_light_type", (int*)&light_type, num_lights);
+		shader->setUniform3Array("u_light_vector", (float*)&light_vector, num_lights);
+		shader->setUniform1Array("u_cone_angle", (float*)&coneAngle, num_lights);
+		shader->setUniform1Array("u_cosine_cutoff", (float*)&spotCosineCuttof, num_lights);
+		shader->setUniform1Array("u_cone_exp", (float*)&coneExp, num_lights);
+		shader->setUniform1Array("u_cast_shadow", (int*)&light_cast_shadows, num_lights);
+		
+		
+		
+		
+		shader->setMatrix44Array("u_shadow_map_vp", (Matrix44*)&light_shadowmap_vp, num_lights);
+		
+		shader->setUniform1Array("u_shadowBias", (float*)&shadowBias, num_lights);
+		
+		
+		
+		
+
 		shader->setUniform1("u_num_lights", num_lights);
 
 
@@ -247,21 +306,23 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			shader->setUniform("u_spotCosineCuttof", 0.0f);
 			shader->setUniform("u_cone_angle", 0.0f);
 			
+			//shader->setUniform("u_light_cast_shadows", 0);
+			
 			if (light->light_type== eLightType::SPOT){
 				shader->setUniform("u_cone_angle", light->cone_angle);
 				shader->setUniform("u_cone_exp", light->cone_exp);	
 				
 				//get radians of light-> cone_angle
 				
-				float radians = light->cone_angle * (float)M_PI / 180.0f;
+				//float radians = light->cone_angle * (float)M_PI / 180.0f;
 				
-				shader->setUniform("u_spotCosineCuttof",cos(radians));	
+				shader->setUniform("u_spotCosineCuttof",cos((float) (DEG2RAD* light->cone_angle)));	
 				
 				
 				//get radians of cone angle
 				
 			}
-			if (light->shadow_map) {
+			if (light->shadow_map && light->cast_shadows) {
 				shader->setUniform("u_light_cast_shadows", 1);
 				shader->setUniform("u_light_shadowmap", light->shadow_map,8);
 				shader->setUniform("u_light_shadowmap_vp",light->shadow_cam->viewprojection_matrix);

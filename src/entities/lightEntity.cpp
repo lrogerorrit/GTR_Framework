@@ -13,10 +13,10 @@ GTR::LightEntity::LightEntity() {
 	color.set(1, 1, 1);
 	intensity = 1;
 	max_distance = 100;
-	cone_angle = 45;
-	cone_exp = 100;
+	cone_angle = 0.0f;
+	cone_exp = .0f;
 	cast_shadows = false;
-	area_size = 1.5;
+	area_size = .0f;
 	lightDirection.set(0,-1,0);
 	shadow_bias = 0.0f;
 	
@@ -48,6 +48,7 @@ void GTR::LightEntity::renderInMenu() {
 	ImGui::SliderFloat3("Light Direction", lightDirection.v, -1, 1);
 	
 	
+	ImGui::Checkbox("Cast shadows", &cast_shadows);
 	if (this->cast_shadows) {
 		ImGui::Checkbox("Show Shadowmap", &showSM);
 		if (showSM) {
