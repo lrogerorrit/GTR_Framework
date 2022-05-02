@@ -8,6 +8,53 @@ flat basic.vs flat.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
+
+
+
+
+
+
+
+
+
+
+
+\shadows
+
+float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D shadowMap )
+{
+	//project our 3D position to the shadowmap
+	vec4 proj_pos = viewProject * vec4(pos,1.0);
+
+	//from homogeneus space to clip space
+	vec2 shadow_uv = proj_pos.xy / proj_pos.w;
+
+	//from clip space to uv space
+	shadow_uv = shadow_uv * 0.5 + vec2(0.5);
+
+	//get point depth [-1 .. +1] in non-linear space
+	float real_depth = (proj_pos.z - bias) / proj_pos.w;
+
+	//normalize from [-1..+1] to [0..+1] still non-linear
+	real_depth = real_depth * 0.5 + 0.5;
+
+	//read depth from depth buffer in [0..+1] non-linear
+	float shadow_depth = texture( shadowMap, shadow_uv).x;
+
+	//compute final shadow factor by comparing
+	float shadow_factor = 1.0;
+
+	//we can compare them, even if they are not linear
+	if( shadow_depth < real_depth ){
+		shadow_factor = 0.0;
+	}
+	return shadow_factor;
+
+}
+
+
+
+
 \basic.vs
 
 #version 330 core
@@ -115,14 +162,14 @@ uniform float u_shadowBias[MAX_LIGHTS];
 
 
 
-
-
 uniform int u_num_lights;
 
 uniform vec3 u_ambient_light;
 
 
 out vec4 FragColor;
+
+#include "shadows"
 
 
 sampler2D getShadowTexture(int lightNum){
@@ -140,38 +187,7 @@ sampler2D getShadowTexture(int lightNum){
 
 }
 
-float getShadowAttenuation(vec3 pos,int lightNum, in sampler2D shadowMap)
-{
-	
 
-	//project our 3D position to the shadowmap
-	vec4 proj_pos = u_shadow_map_vp[lightNum] * vec4(pos,1.0);
-
-	//from homogeneus space to clip space
-	vec2 shadow_uv = proj_pos.xy / proj_pos.w;
-
-	//from clip space to uv space
-	shadow_uv = shadow_uv * 0.5 + vec2(0.5);
-
-	//get point depth [-1 .. +1] in non-linear space
-	float real_depth = (proj_pos.z - u_shadowBias[lightNum]) / proj_pos.w;
-
-	//normalize from [-1..+1] to [0..+1] still non-linear
-	real_depth = real_depth * 0.5 + 0.5;
-
-	//read depth from depth buffer in [0..+1] non-linear
-	float shadow_depth = texture( shadowMap, shadow_uv).x;
-
-	//compute final shadow factor by comparing
-	float shadow_factor = 1.0;
-
-	//we can compare them, even if they are not linear
-	if( shadow_depth < real_depth ){
-		shadow_factor = 0.0;
-	}
-	return shadow_factor;
-
-}
 
 
 void main()
@@ -179,73 +195,82 @@ void main()
 	vec3 N= normalize(v_normal);
 	vec2 uv = v_uv;
 	vec4 color = u_color;
-	color *= texture( u_texture, v_uv );
-	float spotFactor=1.0;
 	
-
+	color *= texture( u_texture, v_uv );
+	
 	if(color.a < u_alpha_cutoff)
 		discard;
+		
+	
 
-	vec3 light = vec3(u_ambient_light);
+	vec3 light=vec3(u_ambient_light);
+	
+	
 	
 	for( int i = 0; i < MAX_LIGHTS; ++i )
 	{
 		if(i < u_num_lights)
 		{
+			
 			vec3 L;
-
-			float spotFactor=1.0;
-			float shadowFactor=1.0;
+			float lightDist=1.0;
+			float attFactor=1.0;
+			float spotFactor= 1.0;
+			float shadowFactor= 1.0;
+			float NdotL= 1.0;
 			
-			if (u_light_type[i]==1){ //Directional light
+			if (u_light_type[i]==1){ //Directional
 				L= normalize(u_light_vector[i]);
+				
 			}else{
-				L = (u_light_position[i] - v_world_position);
+				L= vec3(u_light_position[i]-v_world_position);
+				lightDist= length(L);
+				L/=lightDist;
+				
+				
+				if (u_light_type[i]==2){ //Spot
+					vec3 D= vec3(u_light_vector[i]);
+					float spotCosine= dot(D,L);
+					
+					if (spotCosine> u_cosine_cutoff[i]){
+						spotFactor= pow(spotCosine,u_cone_exp[i]);
+					}else{
+						spotFactor= 0.0;
+					}
+				}
+				
+				attFactor= (u_light_max_distance[i]-lightDist);
+				attFactor/= u_light_max_distance[i];
+				attFactor*= pow (attFactor,2.0);
+				attFactor= max(attFactor,0.0);		
 			}
 			
-			float light_dist= length(L);
-			L/=light_dist;
-			float att_factor = u_light_max_distance[i] - light_dist;
-
-			if(u_light_type[i]==2){ //spot light
-				vec3 D= u_light_vector[i];
-				float spotCosine= dot(D,L);
-				if (spotCosine> u_cosine_cutoff[i])
-					spotFactor= pow(spotCosine,u_cone_exp[i]);
-				else
-					spotFactor=0.0;
-			}
 			
-			if(u_cast_shadow[i]==1){
-				shadowFactor=getShadowAttenuation(v_world_position,i,getShadowTexture(i));
-			}
 			
-			att_factor /= u_light_max_distance[i];
-			att_factor*=pow(att_factor,2.0);
 
-			//ignore negative values
-			att_factor = max( att_factor, 0.0 );
-			if(u_light_type[i]==1)
-				att_factor=1.0;
-
-
-			float NdotL = max( dot(L,N), 0.0 );
-			//apply to amount of light
-			light += ( NdotL * u_light_color[i]) * att_factor*spotFactor*shadowFactor;
-
-
-
+			if (u_cast_shadow[i]==1)
+				shadowFactor= getShadowAttenuation(v_world_position,u_shadow_map_vp[i], u_shadowBias[i], getShadowTexture(i));
+			
+			
+					
+			
+			NdotL= max(dot(L,N),0.0);
+			
+			
+			float multipliers=(attFactor*spotFactor*shadowFactor);
+			
+			light+= (NdotL*u_light_color[i])*multipliers;
 		}
 		
 	}
-	color.xyz *= light;
+	color.xyz*= light;
+	
 	
 	
 	FragColor = color;
 }
 
 \multiPass.fs
-
 #version 330 core
 
 in vec3 v_position;
@@ -272,7 +297,7 @@ uniform float u_cone_exp;
 uniform float u_cone_angle;
 
 
-uniform int u_light_cast_shadows;
+uniform bool u_light_cast_shadows;
 uniform sampler2D u_light_shadowmap;
 uniform mat4 u_light_shadowmap_vp;
 uniform float u_shadow_bias;
@@ -281,37 +306,11 @@ uniform float u_shadow_bias;
 
 out vec4 FragColor;
 
+#include "shadows"
 
-float getShadowAttenuation(vec3 pos)
-{
-	//project our 3D position to the shadowmap
-	vec4 proj_pos = u_light_shadowmap_vp * vec4(pos,1.0);
 
-	//from homogeneus space to clip space
-	vec2 shadow_uv = proj_pos.xy / proj_pos.w;
 
-	//from clip space to uv space
-	shadow_uv = shadow_uv * 0.5 + vec2(0.5);
 
-	//get point depth [-1 .. +1] in non-linear space
-	float real_depth = (proj_pos.z - u_shadow_bias) / proj_pos.w;
-
-	//normalize from [-1..+1] to [0..+1] still non-linear
-	real_depth = real_depth * 0.5 + 0.5;
-
-	//read depth from depth buffer in [0..+1] non-linear
-	float shadow_depth = texture( u_light_shadowmap, shadow_uv).x;
-
-	//compute final shadow factor by comparing
-	float shadow_factor = 1.0;
-
-	//we can compare them, even if they are not linear
-	if( shadow_depth < real_depth ){
-		shadow_factor = 0.0;
-	}
-	return shadow_factor;
-
-}
 
 void main()
 {
@@ -320,58 +319,50 @@ void main()
 	vec4 color = u_color;
 	vec3 L;
 	color *= texture( u_texture, v_uv );
-	float spotFactor=1.0;
-
 	if(color.a < u_alpha_cutoff)
 		discard;
 
+	float lightDist=1.0;
+	float attFactor= 1.0;
+	float spotFactor=1.0;
+	float shadowFactor= 1.0;
+	
+	float NdotL=1.0;
+		
+	
 	vec3 light = vec3(u_ambient_light);
-	if (u_light_type==1) //Directional Light
-	{
+	
+	if (u_light_type==1){ //Directional Light
 		L= normalize(u_light_vector);
-	}else{
-	L= (u_light_position- v_world_position);
-	
+		
 	}
-	
-	
-	float light_dist= length(L);
-
-	L/=light_dist;
-	
-	float att_factor = u_light_max_distance - light_dist;
-	
-	if (u_light_type==2){
-		vec3 D= u_light_vector;
-		float spotCosine= dot(D,L);
-		if (spotCosine> u_spotCosineCuttof){
-			spotFactor= pow(spotCosine,u_cone_exp);
-		}else{
-			spotFactor=0;
+	else{
+		L= (u_light_position-v_world_position);
+		lightDist= length(L);
+		L/=lightDist;
+		if (u_light_type==2){ //Spot
+			vec3 D= u_light_vector;
+			float spotCosine= dot(D,L);
+			
+			if (spotCosine>u_spotCosineCuttof){
+				spotFactor= pow(spotCosine,u_cone_exp);
+			}else{
+				spotFactor= 0.0;
+			}
 		}
+		attFactor= (u_light_max_distance-lightDist);
+		attFactor/= u_light_max_distance;
+		attFactor*=pow(attFactor,2.0);
+		attFactor= max(attFactor,0.0);
 	}
 	
-	float shadow_factor =1.0;
+	if (u_light_cast_shadows==true)
+		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,u_light_shadowmap);
 	
-	if(u_light_cast_shadows==1){
-		shadow_factor=getShadowAttenuation(v_world_position);
-	}
+	NdotL= max(dot(L,N),0.0);
+	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	
-	att_factor /= u_light_max_distance;
-	att_factor*=pow(att_factor,2.0);
-
-	//ignore negative values
-	att_factor = max( att_factor, 0.0 );
-	if(u_light_type==1){
-		att_factor=1;
-	}
-
-	float NdotL = max( dot(L,N), 0.0 );
-	//apply to amount of light
-	light += ( NdotL * u_light_color) * att_factor*spotFactor*shadow_factor;
-	color.xyz *= light;
-	
-	
+	color.xyz*= light;
 	FragColor = color;
 }
 

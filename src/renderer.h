@@ -22,7 +22,7 @@ namespace GTR {
 		Mesh* mesh;
 		Material* material;
 		Matrix44 model;
-		
+		BoundingBox boundingBox;
 		float distance_to_camera;
 	};
 

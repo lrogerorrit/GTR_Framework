@@ -35,7 +35,10 @@ bool transparencySort(const GTR::RenderCall& a, const GTR::RenderCall& b) {
 
 bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
 	
-	return (int)a->cast_shadows >= (int)b->cast_shadows;
+	if (a->cast_shadows && b->cast_shadows)
+		return (int)a->light_type <= (int) b->light_type;
+	else
+		return (int)a->cast_shadows >= (int)b->cast_shadows ;
 }
 	
 
@@ -81,7 +84,6 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 
 	if (this->orderNodes)
 		std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
-	std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	
 
 	//generate shadowmaps
@@ -90,10 +92,13 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		if (light->cast_shadows)
 			generateShadowMaps(light);
 	}
+	std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	
 	for (int i = 0; i < this->render_calls.size(); ++i){
 		RenderCall& rc = this->render_calls[i];
-		renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);
+		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
+		if (camera->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
+			renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);
 		
 	}
 }
@@ -119,23 +124,24 @@ void Renderer::renderNode(const Matrix44& prefab_model, GTR::Node* node, Camera*
 	if (node->mesh && node->material)
 	{
 		//compute the bounding box of the object in world space (by using the mesh bounding box transformed to world space)
-		BoundingBox world_bounding = transformBoundingBox(node_model,node->mesh->box);
+		//BoundingBox world_bounding = transformBoundingBox(node_model,node->mesh->box);
 		
 		//if bounding box is inside the camera frustum then the object is probably visible
-		if (camera->testBoxInFrustum(world_bounding.center, world_bounding.halfsize) )
-		{
+		//if (camera->testBoxInFrustum(world_bounding.center, world_bounding.halfsize) )
+		//{
 			//render node mesh
 			//renderMeshWithMaterial( node_model, node->mesh, node->material, camera );
 			//node->mesh->renderBounding(node_model, true);
-			RenderCall rc;
-			Vector3 nodepos = node_model.getTranslation();
-			rc.mesh = node->mesh;
-			rc.material = node->material;
-			rc.model = node_model;
-			rc.distance_to_camera = distance(nodepos,camera->eye);
-			this->render_calls.push_back(rc);
+		RenderCall rc;
+		Vector3 nodepos = node_model.getTranslation();
+		rc.mesh = node->mesh;
+		rc.material = node->material;
+		rc.model = node_model;
+		rc.distance_to_camera = distance(nodepos,camera->eye);
+		rc.boundingBox = transformBoundingBox(node_model, node->mesh->box);
+		this->render_calls.push_back(rc);
 			
-		}
+		//}
 	}
 
 	//iterate recursively with children
@@ -221,6 +227,9 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 
 	if (this->multiLightType == (int)eMultiLightType::SINGLE_PASS) {
 		const int maxLights = 5;
+
+		std::vector<const char*> textureNames = { "u_shadow_texture0","u_shadow_texture1","u_shadow_texture2","u_shadow_texture3","u_shadow_texture4" };
+		
 		Vector3 light_position[maxLights] = {};
 		Vector3 light_color[maxLights] = {};
 		float light_max_distance[maxLights] = {};
@@ -229,32 +238,33 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		float spotCosineCuttof[maxLights] = {};
 		float coneAngle[maxLights] = {};
 		float coneExp[maxLights] = {};
-		
 		int light_cast_shadows[maxLights] = {};
 		//Texture* light_shadowmap[maxLights] = {};
 		Matrix44 light_shadowmap_vp[maxLights] = {};
 		float shadowBias[maxLights] = {};
 		
 		
-
-		for (int i = 0; i < num_lights; ++i) {
+		
+		for (int i = 0; i < num_lights; i++) {
 			light_position[i] = lights[i]->model.getTranslation();
 			light_color[i] = lights[i]->color * lights[i]->intensity;
 			light_max_distance[i] = lights[i]->max_distance;
-			light_type[i] = (int)lights[i]->light_type;
+			light_type[i] = (int)(lights[i]->light_type);
 			light_vector[i] = lights[i]->lightDirection;
 			coneAngle[i] = lights[i]->cone_angle;
 			spotCosineCuttof[i] = cos((float)(DEG2RAD * lights[i]->cone_angle));
 			coneExp[i] = lights[i]->cone_exp;
-			light_cast_shadows[i] = (lights[i]->shadow_map && lights[i]->cast_shadows);
+			light_cast_shadows[i] = (lights[i]->cast_shadows)?1:0;
 			//light_shadowmap[i] = lights[i]->shadow_map;
 			shadowBias[i] = lights[i]->shadow_bias;
 			
-			std::string textureName= "u_shadow_texture"+std::to_string(i);
 			if ((lights[i]->shadow_map && lights[i]->cast_shadows)) {
-				shader->setUniform(textureName.c_str(), lights[i]->shadow_map, 8 + i);
+				shader->setTexture(textureNames[i], lights[i]->shadow_map, 8 + i);
 				light_shadowmap_vp[i] = lights[i]->shadow_cam->viewprojection_matrix;
 			}
+			
+
+			
 	
 		};
 		
@@ -271,6 +281,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		
 		
 		
+		
 		shader->setMatrix44Array("u_shadow_map_vp", (Matrix44*)&light_shadowmap_vp, num_lights);
 		
 		shader->setUniform1Array("u_shadowBias", (float*)&shadowBias, num_lights);
@@ -283,6 +294,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 
 
 	mesh->render(GL_TRIANGLES);
+	shader->disable();
 	}
 	else {
 		glDepthFunc(GL_LEQUAL);
@@ -291,6 +303,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		else
 			glDisable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, material->alpha_mode==GTR::eAlphaMode::BLEND? GL_ONE_MINUS_SRC_ALPHA: GL_ONE);
+		
 		
 	
 		for (int i = 0; i < num_lights; i++) {
@@ -306,7 +319,9 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			shader->setUniform("u_spotCosineCuttof", 0.0f);
 			shader->setUniform("u_cone_angle", 0.0f);
 			
-			//shader->setUniform("u_light_cast_shadows", 0);
+			shader->setUniform("u_light_cast_shadows", false);
+			
+			
 			
 			if (light->light_type== eLightType::SPOT){
 				shader->setUniform("u_cone_angle", light->cone_angle);
@@ -323,7 +338,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 				
 			}
 			if (light->shadow_map && light->cast_shadows) {
-				shader->setUniform("u_light_cast_shadows", 1);
+				shader->setUniform("u_light_cast_shadows", true);
 				shader->setUniform("u_light_shadowmap", light->shadow_map,8);
 				shader->setUniform("u_light_shadowmap_vp",light->shadow_cam->viewprojection_matrix);
 				shader->setUniform("u_shadow_bias", light->shadow_bias);
@@ -448,7 +463,8 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 		RenderCall& rc = this->render_calls[i];
 		if (rc.material->alpha_mode == eAlphaMode::BLEND)
 			continue;
-		renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam);
+		if (light->shadow_cam->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
+			renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam);
 		//shader->setUniform("u_viewprojection", light->shadow_cam->viewprojection_matrix);
 		//rc.mesh->render(GL_TRIANGLES);
 
