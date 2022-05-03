@@ -25,7 +25,12 @@ GTR::BaseEntity* selected_entity = nullptr;
 FBO* fbo = nullptr;
 Texture* texture = nullptr;
 
+std::vector<GTR::Scene*> scenes;
+
 float cam_speed = 10;
+int activeScene = 1;
+
+const int MAX_SCENES = 2;
 
 Application::Application(int window_width, int window_height, SDL_Window* window)
 {
@@ -66,8 +71,14 @@ Application::Application(int window_width, int window_height, SDL_Window* window
 	//prefab = GTR::Prefab::Get("data/prefabs/gmc/scene.gltf");
 
 	scene = new GTR::Scene();
+	GTR::Scene* s2 = new GTR::Scene();
 	if (!scene->load("data/scene.json"))
 		exit(1);
+	s2->load("data/scene2.json");
+
+	scenes.push_back(scene);
+	scenes.push_back(s2);
+	
 
 	camera->lookAt(scene->main_camera.eye, scene->main_camera.center, Vector3(0, 1, 0));
 	camera->fov = scene->main_camera.fov;
@@ -118,7 +129,7 @@ void Application::update(double seconds_elapsed)
 {
 	float speed = seconds_elapsed * cam_speed; //the speed is defined by the seconds_elapsed so it goes constant
 	float orbit_speed = seconds_elapsed * 0.5;
-	
+	scene= scenes[activeScene-1];
 	//async input to move the camera around
 	if (Input::isKeyPressed(SDL_SCANCODE_LSHIFT)) speed *= 10; //move faster with left shift
 	if (Input::isKeyPressed(SDL_SCANCODE_W) || Input::isKeyPressed(SDL_SCANCODE_UP)) camera->move(Vector3(0.0f, 0.0f, 1.0f) * speed);
@@ -245,6 +256,7 @@ void Application::renderDebugGUI(void)
 	
 	bool test = true;
 	ImGui::Text(getGPUStats().c_str());					   // Display some text (you can use a format strings too)
+	ImGui::SliderInt("Active Scene", &activeScene, 1, MAX_SCENES);
 	if (ImGui::CollapsingHeader("Visual Options")) {
 		ImGui::Checkbox("Alpha Sorting",&renderer->orderNodes);
 		ImGui::RadioButton("Single pass", &renderer->multiLightType,(int) GTR::eMultiLightType::SINGLE_PASS);

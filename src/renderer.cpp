@@ -161,17 +161,30 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	//define locals to simplify coding
 	Shader* shader = NULL;
 	Texture* texture = NULL;
+	Texture* textureEmissive = NULL;
+	Texture* textureMRT = NULL;
+	Texture* textureNormal = NULL;
+	Texture* textureOcclusion = NULL;
 	GTR::Scene* scene = GTR::Scene::instance;
 
 
 
 	texture = material->color_texture.texture;
-	//texture = material->emissive_texture;
-	//texture = material->metallic_roughness_texture;
-	//texture = material->normal_texture;
-	//texture = material->occlusion_texture;
+	textureEmissive = material->emissive_texture.texture;
+	textureMRT = material->metallic_roughness_texture.texture;
+	textureNormal = material->normal_texture.texture;
+	textureOcclusion = material->occlusion_texture.texture;
 	if (texture == NULL)
 		texture = Texture::getWhiteTexture(); //a 1x1 white texture
+	if (textureEmissive == NULL)
+		textureEmissive = Texture::getBlackTexture(); //a 1x1 white texture
+	if (textureMRT == NULL)
+		textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
+	if (textureNormal == NULL)
+		textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
+	if (textureOcclusion == NULL)
+		textureOcclusion = Texture::getWhiteTexture(); //a 1x1 white texture
+	
 
 	//select the blending
 	if (material->alpha_mode == GTR::eAlphaMode::BLEND)
@@ -208,12 +221,22 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);
 	shader->setUniform("u_model", model );
+	shader->setFloat("u_emissive_factor", 1.0 );
 	float t = getTime();
 	shader->setUniform("u_time", t );
 
 	shader->setUniform("u_color", material->color);
 	if(texture)
 		shader->setUniform("u_texture", texture, 0);
+	
+	if (textureEmissive)
+		shader->setUniform("u_emissive_texture", textureEmissive, 1);
+	if (textureMRT)
+		shader->setUniform("u_metallic_roughness_texture", textureMRT, 2);
+	if (textureNormal)
+		shader->setUniform("u_normal_texture", textureNormal, 3);
+	if (textureOcclusion)
+		shader->setUniform("u_occlusion_texture", textureOcclusion, 4);
 
 	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
@@ -308,8 +331,10 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	
 		for (int i = 0; i < num_lights; i++) {
 			LightEntity* light = lights[i];
-			if (i>0)
+			if (i > 0) {
 				shader->setUniform("u_ambient_light", Vector3());
+				shader->setFloat("u_emissive_factor", 0.0f);
+			}
 			
 			shader->setUniform("u_light_color", light->color * light->intensity);
 			shader->setUniform("u_light_position", light->model.getTranslation());
@@ -421,7 +446,7 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 	if (!light->shadow_fbo)
 	{
 		light->shadow_fbo = new FBO();
-		light->shadow_fbo->setDepthOnly(1024,1024);
+		light->shadow_fbo->setDepthOnly(2048,2048);
 		light->shadow_map = light->shadow_fbo->depth_texture;
 	}
 	Camera* view_cam = Camera::current;
@@ -439,7 +464,7 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 	if (light->light_type == eLightType::DIRECTIONAL) {
 		light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
 		
-		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - light->lightDirection, Vector3(0, 1, 0));
+		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - (light->lightDirection*20), Vector3(0, 1, 0));
 
 		//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
 	}

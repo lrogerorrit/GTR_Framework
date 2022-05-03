@@ -44,6 +44,9 @@ void GTR::LightEntity::renderInMenu() {
 			ImGui::DragFloat("Cone Exponent",&cone_exp,.1f);
 			
 			break;
+		case (eLightType::DIRECTIONAL):
+			ImGui::DragFloat("Area Size", &area_size);
+			break;
 	}
 	ImGui::SliderFloat3("Light Direction", lightDirection.v, -1, 1);
 	
