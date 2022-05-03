@@ -198,11 +198,14 @@ uniform sampler2D u_emissive_texture;
 uniform sampler2D u_occlusion_texture;
 uniform sampler2D u_normal_texture;
 
-//uniform vec3 u_emissive_factor;
 
 uniform int u_num_lights;
 
 uniform vec3 u_ambient_light;
+uniform bool u_use_normalmap;
+uniform float u_emissive_factor;
+uniform bool u_useOcclusion;
+
 
 
 out vec4 FragColor;
@@ -248,8 +251,11 @@ void main()
 	vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 	vec4 emissive= texture(u_emissive_texture,v_uv);
 	
-	N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
-	vec3 light=u_ambient_light*occlusionFactor;
+	if(u_use_normalmap)
+		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
+	vec3 light= vec3(u_ambient_light);
+	if(u_useOcclusion)
+		light*=occlusionFactor;
 	
 	
 	for( int i = 0; i < MAX_LIGHTS; ++i )
@@ -307,7 +313,7 @@ void main()
 	}
 	color.xyz*= light;
 	
-	color.xyz+=emissive.xyz;
+	color.xyz+=emissive.xyz*u_emissive_factor;
 	
 	
 	FragColor = color;
@@ -354,6 +360,8 @@ uniform sampler2D u_occlusion_texture;
 uniform sampler2D u_normal_texture;
 
 uniform float u_emissive_factor;
+uniform bool u_use_normalmap;
+uniform bool u_useOcclusion;
 
 
 
@@ -389,10 +397,11 @@ void main()
 	vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 	vec4 emissive= texture(u_emissive_texture,v_uv);
 	
-		
-	N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
-	vec3 light=u_ambient_light*occlusionFactor;
-	
+	if(u_use_normalmap)	
+		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
+	vec3 light=u_ambient_light;
+	if(u_useOcclusion)
+		light*=occlusionFactor;
 	
 	if (u_light_type==1){ //Directional Light
 		L= normalize(u_light_vector);

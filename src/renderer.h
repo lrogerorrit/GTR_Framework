@@ -36,7 +36,12 @@ namespace GTR {
 		
 	public:
 		bool orderNodes = true;
+		bool useOcclusion = true;
+		bool useNormalMap = true;
+		bool useEmissive = true;
+		
 		int multiLightType = (int) eMultiLightType::SINGLE_PASS;
+		
 		
 
 		//add here your functions

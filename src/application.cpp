@@ -15,22 +15,37 @@
 #include <string>
 #include <cstdio>
 
+
 Application* Application::instance = nullptr;
 
 Camera* camera = nullptr;
-GTR::Scene* scene = nullptr;
+
+
+
+std::vector<GTR::Scene*> scenes;
+
 GTR::Prefab* prefab = nullptr;
 GTR::Renderer* renderer = nullptr;
 GTR::BaseEntity* selected_entity = nullptr;
 FBO* fbo = nullptr;
 Texture* texture = nullptr;
 
-std::vector<GTR::Scene*> scenes;
+
 
 float cam_speed = 10;
-int activeScene = 1;
+int activeSceneNum = 1;
 
 const int MAX_SCENES = 2;
+
+GTR::Scene* Application::getActiveScene()
+{
+	return this->activeScene;
+}
+
+
+void Application::setActiveScene(int sceneNum) {
+	this->activeScene = scenes[sceneNum];
+}
 
 Application::Application(int window_width, int window_height, SDL_Window* window)
 {
@@ -49,6 +64,7 @@ Application::Application(int window_width, int window_height, SDL_Window* window
 	time = 0.0f;
 	elapsed_time = 0.0f;
 	mouse_locked = false;
+	activeScene = nullptr;
 
 	//loads and compiles several shaders from one single file
     //change to "data/shader_atlas_osx.txt" if you are in XCODE
@@ -70,15 +86,27 @@ Application::Application(int window_width, int window_height, SDL_Window* window
 	//Example of loading a prefab
 	//prefab = GTR::Prefab::Get("data/prefabs/gmc/scene.gltf");
 
-	scene = new GTR::Scene();
-	GTR::Scene* s2 = new GTR::Scene();
-	if (!scene->load("data/scene.json"))
-		exit(1);
-	s2->load("data/scene2.json");
-
-	scenes.push_back(scene);
-	scenes.push_back(s2);
+	int loadedScenes = 0;
 	
+	
+	for (int i = 0; i < MAX_SCENES; ++i) {
+		GTR::Scene* sc = new GTR::Scene();
+		std::string name = "data/scene" + std::to_string(i+1) + ".json";
+		if (sc->load(name.c_str())) {
+			scenes.push_back(sc);
+			loadedScenes++;
+		}
+	}
+	assert(loadedScenes); //If loadedscenes=0 ==> error
+	this->setActiveScene(activeSceneNum-1);
+	
+	
+	/*
+		if (!scene->load("data/scene.json"))
+			exit(1);
+		s2->load("data/scene2.json");*/
+	
+	GTR::Scene* scene = this->getActiveScene();
 
 	camera->lookAt(scene->main_camera.eye, scene->main_camera.center, Vector3(0, 1, 0));
 	camera->fov = scene->main_camera.fov;
@@ -95,7 +123,7 @@ void Application::render(void)
 {
 	//be sure no errors present in opengl before start
 	checkGLErrors();
-
+	GTR::Scene* scene = this->getActiveScene();
 	//set the camera as default (used by some functions in the framework)
 	camera->enable();
 
@@ -129,7 +157,7 @@ void Application::update(double seconds_elapsed)
 {
 	float speed = seconds_elapsed * cam_speed; //the speed is defined by the seconds_elapsed so it goes constant
 	float orbit_speed = seconds_elapsed * 0.5;
-	scene= scenes[activeScene-1];
+	
 	//async input to move the camera around
 	if (Input::isKeyPressed(SDL_SCANCODE_LSHIFT)) speed *= 10; //move faster with left shift
 	if (Input::isKeyPressed(SDL_SCANCODE_W) || Input::isKeyPressed(SDL_SCANCODE_UP)) camera->move(Vector3(0.0f, 0.0f, 1.0f) * speed);
@@ -164,7 +192,7 @@ void Application::update(double seconds_elapsed)
 	//move up or down the camera using Q and E
 	if (Input::isKeyPressed(SDL_SCANCODE_Q)) camera->moveGlobal(Vector3(0.0f, -1.0f, 0.0f) * speed);
 	if (Input::isKeyPressed(SDL_SCANCODE_E)) camera->moveGlobal(Vector3(0.0f, 1.0f, 0.0f) * speed);
-
+	
 	//to navigate with the mouse fixed in the middle
 	SDL_ShowCursor(!mouse_locked);
 	#ifndef SKIP_IMGUI
@@ -175,6 +203,7 @@ void Application::update(double seconds_elapsed)
 		Input::centerMouse();
 		//ImGui::SetCursorPos(ImVec2(Input::mouse_position.x, Input::mouse_position.y));
 	}
+	this->setActiveScene(activeSceneNum - 1);
 }
 
 void Application::renderDebugGizmo()
@@ -252,16 +281,22 @@ void Application::renderDebugGUI(void)
 #ifndef SKIP_IMGUI //to block this code from compiling if we want
 
 	//System stats
-
+	GTR::Scene* scene = this->getActiveScene();
 	
 	bool test = true;
 	ImGui::Text(getGPUStats().c_str());					   // Display some text (you can use a format strings too)
-	ImGui::SliderInt("Active Scene", &activeScene, 1, MAX_SCENES);
+	ImGui::SliderInt("Active Scene", &activeSceneNum, 1, MAX_SCENES);
 	if (ImGui::CollapsingHeader("Visual Options")) {
 		ImGui::Checkbox("Alpha Sorting",&renderer->orderNodes);
+		ImGui::BulletText("Multiple Light Render:");
+		ImGui::SameLine();
 		ImGui::RadioButton("Single pass", &renderer->multiLightType,(int) GTR::eMultiLightType::SINGLE_PASS);
 		ImGui::SameLine();
 		ImGui::RadioButton("Multipass", &renderer->multiLightType, (int) GTR::eMultiLightType::MULTI_PASS);
+		ImGui::NewLine();
+		ImGui::Checkbox("Use Emissive Texture", &renderer->useEmissive);
+		ImGui::Checkbox("Use Occlusion", &renderer->useOcclusion);
+		ImGui::Checkbox("Use Normalmap", &renderer->useNormalMap);
 		
 		ImGui::Separator();
 		
@@ -272,6 +307,9 @@ void Application::renderDebugGUI(void)
 	
 	ImGui::ColorEdit3("BG color", scene->background_color.v);
 	ImGui::ColorEdit3("Ambient Light", scene->ambient_light.v);
+
+	
+	
 
 	//add info to the debug panel about the camera
 	if (ImGui::TreeNode(camera, "Camera")) {
@@ -310,6 +348,7 @@ void Application::renderDebugGUI(void)
 //Keyboard event handler (sync input)
 void Application::onKeyDown( SDL_KeyboardEvent event )
 {
+	GTR::Scene* scene = this->getActiveScene();
 	switch(event.keysym.sym)
 	{
 		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app

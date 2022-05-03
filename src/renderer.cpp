@@ -10,6 +10,7 @@
 #include "scene.h"
 #include "extra/hdre.h"
 #include "framework.h"
+#include "application.h"
 #include <algorithm>
 #include <string>
 
@@ -34,11 +35,7 @@ bool transparencySort(const GTR::RenderCall& a, const GTR::RenderCall& b) {
 }
 
 bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
-	
-	if (a->cast_shadows && b->cast_shadows)
-		return (int)a->light_type <= (int) b->light_type;
-	else
-		return (int)a->cast_shadows >= (int)b->cast_shadows ;
+	return (int)a->cast_shadows > (int)b->cast_shadows ;
 }
 	
 
@@ -92,6 +89,7 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		if (light->cast_shadows)
 			generateShadowMaps(light);
 	}
+
 	std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	
 	for (int i = 0; i < this->render_calls.size(); ++i){
@@ -165,7 +163,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	Texture* textureMRT = NULL;
 	Texture* textureNormal = NULL;
 	Texture* textureOcclusion = NULL;
-	GTR::Scene* scene = GTR::Scene::instance;
+	GTR::Scene* scene = Application::instance->getActiveScene();
 
 
 
@@ -221,7 +219,10 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);
 	shader->setUniform("u_model", model );
-	shader->setFloat("u_emissive_factor", 1.0 );
+	
+	shader->setFloat("u_emissive_factor", this->useEmissive?1.0:0.0 );
+	shader->setUniform("u_use_normalmap", this->useNormalMap);
+	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	float t = getTime();
 	shader->setUniform("u_time", t );
 
@@ -242,6 +243,8 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
 	
 	shader->setUniform("u_ambient_light", scene->ambient_light);
+	
+	
 
 	if (!num_lights) {
 		mesh->render(GL_TRIANGLES);
@@ -399,7 +402,7 @@ void Renderer::renderFlatMesh(const Matrix44 model, Mesh* mesh, GTR::Material* m
 
 	//define locals to simplify coding
 	Shader* shader = NULL;
-	GTR::Scene* scene = GTR::Scene::instance;
+	GTR::Scene* scene = Application::instance->getActiveScene();
 	/*if (material->alpha_mode == GTR::eAlphaMode::BLEND)
 	{
 		glEnable(GL_BLEND);
@@ -454,6 +457,7 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 	if (!light->shadow_cam)
 		light->shadow_cam = new Camera();
 
+	
 	//enable it to render inside the texture
 	light->shadow_fbo->bind();
 

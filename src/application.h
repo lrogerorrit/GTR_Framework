@@ -9,8 +9,17 @@
 #include "camera.h"
 #include "utils.h"
 
+
+namespace GTR {
+	class Scene;
+}
+
 class Application
 {
+private:
+	GTR::Scene* activeScene;
+	void setActiveScene(int sceneNum);
+	
 public:
 	static Application* instance;
 
@@ -32,6 +41,7 @@ public:
 	bool mouse_locked; //tells if the mouse is locked (blocked in the center and not visible)
 	bool render_wireframe; //in case we want to render everything in wireframe mode
 
+
 	Application( int window_width, int window_height, SDL_Window* window );
 
 	//main functions
@@ -40,6 +50,8 @@ public:
 
 	void renderDebugGUI(void);
 	void renderDebugGizmo();
+
+	GTR::Scene* getActiveScene();
 
 	//events
 	void onKeyDown( SDL_KeyboardEvent event );
