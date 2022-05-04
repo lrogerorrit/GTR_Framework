@@ -449,7 +449,7 @@ void GTR::Renderer::generateShadowMaps(LightEntity* light)
 	if (!light->shadow_fbo)
 	{
 		light->shadow_fbo = new FBO();
-		light->shadow_fbo->setDepthOnly(2048,2048);
+		light->shadow_fbo->setDepthOnly(1024,1024);
 		light->shadow_map = light->shadow_fbo->depth_texture;
 	}
 	Camera* view_cam = Camera::current;
