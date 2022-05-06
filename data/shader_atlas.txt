@@ -8,6 +8,27 @@ flat basic.vs flat.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
+\mapFunction
+int map(int x, int in_min, int in_max, int out_min, int out_max){
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float mapFloat(float x, float in_min, float in_max, float out_min, float out_max){
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+\shadowAtlas
+uniform vec4 shadowMapInfo[MAX_LIGHTS]; //vec4(x,y,w,h);
+
+#include "mapFunction"
+
+vec4 getColorFromAtlas(vec2 uv, int shadowMapIndex,sampler2D atlas){
+	vec4 cellInfo= shadowMapInfo[shadowMapIndex];
+	vec2 pos= vec2(mapFloat(uv.x,0,1,cellInfo.x,cellInfo.x+cellInfo.z),
+				   mapFloat(uv.y,0,1,cellInfo.y,cellInfo.y+cellInfo.w));
+	return texture(atlas,pos);
+}
 
 
 \normals
@@ -44,8 +65,10 @@ vec3 perturbNormal(vec3 N, vec3 WP, vec2 uv, vec3 normal_pixel)
 
 
 \shadows
+#include "shadowAtlas"
 
-float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D shadowMap, bool isDirectional )
+
+float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D shadowMap, bool isDirectional, bool useShadowAtlas, int shadowIndex)
 {
 	//project our 3D position to the shadowmap
 	vec4 proj_pos = viewProject * vec4(pos,1.0);
@@ -63,7 +86,8 @@ float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D sha
 	real_depth = real_depth * 0.5 + 0.5;
 
 	//read depth from depth buffer in [0..+1] non-linear
-	float shadow_depth = texture( shadowMap, shadow_uv).x;
+	vec4 texture_depth= (useShadowAtlas==true)? getColorFromAtlas(shadow_uv,shadowIndex,shadowMap):texture( shadowMap, shadow_uv);
+	float shadow_depth = texture_depth.x;
 
 	//compute final shadow factor by comparing
 	float shadow_factor = 1.0;
@@ -205,6 +229,7 @@ uniform vec3 u_ambient_light;
 uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
 uniform bool u_useOcclusion;
+uniform sampler2D shadowAtlasTexture;
 
 
 
@@ -297,7 +322,7 @@ void main()
 			}
 			
 			if (u_cast_shadow[i]==1)
-				shadowFactor= getShadowAttenuation(v_world_position,u_shadow_map_vp[i], u_shadowBias[i], getShadowTexture(i),u_light_type[i]==1);
+				shadowFactor= getShadowAttenuation(v_world_position,u_shadow_map_vp[i], u_shadowBias[i], shadowAtlasTexture,u_light_type[i]==1,true,i);
 			
 			
 					
@@ -428,7 +453,7 @@ void main()
 	}
 	
 	if (u_light_cast_shadows==true)
-		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,u_light_shadowmap,u_light_type==1);
+		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,u_light_shadowmap,u_light_type==1,false,0);
 	
 	NdotL= max(dot(L,N),0.0);
 	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;

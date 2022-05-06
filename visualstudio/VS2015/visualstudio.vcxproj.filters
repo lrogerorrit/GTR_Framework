@@ -120,6 +120,7 @@
     <ClCompile Include="..\..\src\entities\lightEntity.cpp">
       <Filter>pipeline\entities</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\shadowAtlas.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\extra\textparser.h">
@@ -237,6 +238,7 @@
     <ClInclude Include="..\..\src\entities\lightEntity.h">
       <Filter>pipeline\entities</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\shadowAtlas.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="extra">
