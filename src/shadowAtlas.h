@@ -5,7 +5,7 @@
 
 class FBO;
 class Texture;
-
+class Shader;
 
 class shadowAtlas
 {
@@ -15,9 +15,19 @@ private:
 
 	std::vector<Vector4> cellData;
 public:
-	shadowAtlas(int size);
+	shadowAtlas();
 	~shadowAtlas();
 
+	void clearAtlas();
+	
+	void clearCell(std::string cellName);
+
+	int addCell(std::string cellName, Vector4 cellData);
+	void removeCell(std::string cellName);
+	
+	void uploadDataToShader(Shader* shader, const char* uniformName);
+	
+	
 	
 };
 
