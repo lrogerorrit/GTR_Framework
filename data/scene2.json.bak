@@ -51,7 +51,7 @@
 			"name":"house",
 			"type":"PREFAB",
 			"filename":"prefabs/house_test/scene.gltf",
-			"position":[-200,0,200],
+			"position":[-500,0,200],
 			"scale":[0.4,0.4,0.4]
 		},
 		

@@ -141,9 +141,7 @@ void renderFlatMesh(const Matrix44 model, Mesh* mesh, GTR::Material* material, C
 	Shader* shader = Shader::Get("flat");
 	shader->enable();
 
-	if (material->two_sided)
-		glDisable(GL_CULL_FACE);
-	else
+	
 		glEnable(GL_CULL_FACE);
 	
 	assert(glGetError() == GL_NO_ERROR);
