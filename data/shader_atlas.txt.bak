@@ -4,7 +4,8 @@ texture basic.vs texture.fs
 singlePass basic.vs singlePass.fs
 multiPass basic.vs multiPass.fs
 noLights basic.vs noLights.fs
-flat basic.vs flat.fs
+gbuffers basic.vs gbuffers.fs
+deferred quad.vs deferred.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
@@ -117,7 +118,30 @@ float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D sha
 
 }
 
+\commonForwardUniforms
+in vec3 v_position;
+in vec3 v_world_position;
+in vec3 v_normal;
+in vec2 v_uv;
+in vec4 v_color;
 
+uniform vec4 u_color;
+uniform sampler2D u_texture;
+uniform float u_time;
+uniform float u_alpha_cutoff;
+
+uniform vec3 u_ambient_light;
+
+uniform bool u_use_normalmap;
+uniform float u_emissive_factor;
+uniform bool u_useOcclusion;
+
+//Phong textures:
+uniform sampler2D u_metallic_roughness_texture;
+uniform sampler2D u_emissive_texture;
+uniform sampler2D u_normal_texture;
+
+const int MAX_LIGHTS= 5;
 
 
 \basic.vs
@@ -177,6 +201,8 @@ void main()
 }
 
 
+
+
 \flat.fs
 
 #version 330 core
@@ -190,7 +216,8 @@ void main()
 	FragColor = u_color;
 }
 
-\singlePass.fs
+
+\gbuffers.fs 
 
 #version 330 core
 
@@ -202,17 +229,137 @@ in vec4 v_color;
 
 uniform vec4 u_color;
 uniform sampler2D u_texture;
+uniform sampler2D u_metallic_roughness_texture;
+uniform sampler2D u_emissive_texture;
+uniform sampler2D u_normal_texture;
+uniform float u_time;
+uniform float u_alpha_cutoff;
 
-uniform sampler2D u_shadow_texture0;
-uniform sampler2D u_shadow_texture1;
-uniform sampler2D u_shadow_texture2;
-uniform sampler2D u_shadow_texture3;
-uniform sampler2D u_shadow_texture4;
+
+layout (location=0) out vec4 GB0;
+layout (location=1) out vec4 GB1;
+layout (location=2) out vec4 GB2;
+
+void main()
+{
+	vec3 N= normalize(v_normal);
+	vec2 uv = v_uv;
+	vec4 color = u_color;
+	color *= texture( u_texture, v_uv );
+
+	if(color.a < u_alpha_cutoff)
+		discard;
+
+	GB0 = vec4(color.xyz,1.0);
+	GB1= vec4(N*.5+vec3(0.5),1.0);
+	GB2= vec4(v_world_position*.001,1.0);
+}
+
+\deferred.fs
+#version 330 core
+
+in vec2 v_uv;
+
+const int MAX_LIGHTS= 5;
+uniform sampler2D u_gb0_texture;
+uniform sampler2D u_gb1_texture;
+uniform sampler2D u_gb2_texture;
+uniform sampler2D u_depth_texture;
+
+uniform mat4 u_inverse_viewprojection;
+uniform vec2 u_iRes;
 
 uniform float u_time;
 uniform float u_alpha_cutoff;
 
-const int MAX_LIGHTS= 5;
+uniform vec3 u_ambient_light;
+uniform vec3 u_light_color;
+uniform vec3 u_light_position;
+uniform vec3 u_light_vector;
+uniform vec3 u_cone_angle;
+uniform float u_light_max_distance;
+uniform int u_light_type;
+uniform float u_spotCosineCuttof;
+uniform bool u_light_cast_shadows;
+uniform float u_cone_exp;
+uniform mat4 u_light_shadowmap_vp;
+uniform float u_shadow_bias;
+uniform int light_index;
+
+
+uniform float ;
+
+
+out vec4 FragColor;
+
+#include "shadows"
+#include "normals"
+
+void main(){
+	
+	float spotFactor=1.0;
+	float attFactor=1.0;
+	float shadowFactor=1.0;
+	float NdotL=1.0;
+	vec2 uv= v_uv;
+	vec4 gb0_color= texture(u_gb0_texture,uv);
+	vec4 gb1_color= texture(u_gb1_texture,uv);
+	vec4 gb2_color= texture(u_gb2_texture,uv);
+	float depth= texture(u_depth_texture,uv).x;
+	vec4 screen_pos= vec4(uv.x*2.0-1.0,uv.y*2.0-1.0,depth*2.0-1.0,1.0);
+	vec4 proj_worldpos= u_inverse_viewprojection*screen_pos;
+	vec3 world_position= proj_worldpos.xyz/proj_worldpos.w;
+
+	vec3 N= normalize(gb1_color.xyz*2.0-vec3(1.0));
+	
+	vec4 color= vec4(gb0_color.xyz,1.0);
+	
+	vec3 light= vec3(u_ambient_light);
+	
+	vec3 L= u_light_position-world_position;
+	
+	float light_dist= length(L);
+	L/= light_dist;
+	
+	float att_factor= u_light_max_distance-light_dist;
+	
+	if (u_light_type==1){ //Spot
+			vec3 D= u_light_vector;
+			float spotCosine= dot(D,L);
+			
+			if (spotCosine>u_spotCosineCuttof){
+				spotFactor= pow(spotCosine,u_cone_exp);
+			}else{
+				spotFactor= 0.0;
+			}
+		}
+	attFactor= (u_light_max_distance-light_dist);
+	attFactor/= u_light_max_distance;
+	//attFactor*=pow(attFactor,2.0);
+	attFactor= max(attFactor,0.0);
+	
+	
+	if (u_light_cast_shadows==true)
+		shadowFactor= getShadowAttenuation(world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
+	
+	NdotL= max(dot(L,N),0.0);
+	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	
+	color.xyz*= light;
+	//color.xyz+=emissive.xyz*u_emissive_factor;
+	FragColor = color;
+}
+
+
+
+
+\singlePass.fs
+
+#version 330 core
+
+#include "commonForwardUniforms"
+
+
 
 uniform vec3 u_light_position[MAX_LIGHTS];
 uniform vec3 u_light_color[MAX_LIGHTS];
@@ -225,25 +372,10 @@ uniform float u_cone_exp[MAX_LIGHTS];
 uniform int u_cast_shadow[MAX_LIGHTS];
 uniform mat4 u_shadow_map_vp[MAX_LIGHTS];
 uniform float u_shadowBias[MAX_LIGHTS];
-
-//Phong textures:
-uniform sampler2D u_metallic_roughness_texture;
-uniform sampler2D u_emissive_texture;
-uniform sampler2D u_occlusion_texture;
-uniform sampler2D u_normal_texture;
-
-
 uniform int u_num_lights;
 
-uniform vec3 u_ambient_light;
-uniform bool u_use_normalmap;
-uniform float u_emissive_factor;
-uniform bool u_useOcclusion;
-
-
-
-
 out vec4 FragColor;
+
 
 #include "shadows"
 #include "normals"
@@ -345,17 +477,11 @@ void main()
 
 \multiPass.fs
 #version 330 core
+#include "commonForwardUniforms"
 
-in vec3 v_position;
-in vec3 v_world_position;
-in vec3 v_normal;
-in vec2 v_uv;
-in vec4 v_color;
 
-uniform vec4 u_color;
-uniform sampler2D u_texture;
-uniform float u_time;
-uniform float u_alpha_cutoff;
+
+
 uniform float u_light_max_distance;
 
 uniform vec3 u_light_position;
@@ -363,7 +489,7 @@ uniform vec3 u_light_color;
 uniform int  u_light_type;
 uniform vec3 u_light_vector;
 
-uniform vec3 u_ambient_light;
+
 uniform vec3 u_target_pos;
 uniform float u_spotCosineCuttof;
 uniform float u_cone_exp;
@@ -377,28 +503,11 @@ uniform float u_shadow_bias;
 
 uniform int light_index;
 
-const int MAX_LIGHTS= 5;
-
-//Phong textures:
-uniform sampler2D u_metallic_roughness_texture;
-uniform sampler2D u_emissive_texture;
-uniform sampler2D u_occlusion_texture;
-uniform sampler2D u_normal_texture;
-
-uniform float u_emissive_factor;
-uniform bool u_use_normalmap;
-uniform bool u_useOcclusion;
-
-
 
 out vec4 FragColor;
 
 #include "shadows"
 #include "normals"
-
-
-
-
 
 void main()
 {
@@ -454,7 +563,7 @@ void main()
 	}
 	
 	if (u_light_cast_shadows==true)
-		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,u_light_shadowmap,u_light_type==2,true,light_index);
+		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
 	
 	NdotL= max(dot(L,N),0.0);
 	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;

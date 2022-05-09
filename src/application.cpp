@@ -146,8 +146,9 @@ void Application::render(void)
 	renderer->renderScene(scene, camera);
 
 	//Draw the floor grid, helpful to have a reference point
-	if(render_debug)
-		drawGrid();
+	if (render_debug) {
+		//drawGrid();
+	}
 
     glDisable(GL_DEPTH_TEST);
     //render anything in the gui after this
@@ -291,16 +292,18 @@ void Application::renderDebugGUI(void)
 	ImGui::SliderInt("Active Scene", &activeSceneNum, 1, MAX_SCENES);
 	if (ImGui::CollapsingHeader("Visual Options")) {
 		ImGui::Checkbox("Alpha Sorting",&renderer->orderNodes);
+		ImGui::Combo("Pipeline",(int*) & renderer->pipelineType, "Forward\0Deferred", 2);
 		ImGui::BulletText("Multiple Light Render:");
 		ImGui::SameLine();
 		ImGui::RadioButton("Single pass", &renderer->multiLightType,(int) GTR::eMultiLightType::SINGLE_PASS);
 		ImGui::SameLine();
 		ImGui::RadioButton("Multipass", &renderer->multiLightType, (int) GTR::eMultiLightType::MULTI_PASS);
 		ImGui::NewLine();
-		ImGui::Checkbox("Use Emissive Texture", &renderer->useEmissive);
-		ImGui::Checkbox("Use Occlusion", &renderer->useOcclusion);
-		ImGui::Checkbox("Use Normalmap", &renderer->useNormalMap);
-		
+		if (ImGui::TreeNode("Other Options:")) {
+			ImGui::Checkbox("Use Emissive Texture", &renderer->useEmissive);
+			ImGui::Checkbox("Use Occlusion", &renderer->useOcclusion);
+			ImGui::Checkbox("Use Normalmap", &renderer->useNormalMap);
+		}
 		ImGui::Separator();
 		
 		
@@ -308,7 +311,9 @@ void Application::renderDebugGUI(void)
 
 	ImGui::Checkbox("Wireframe", &render_wireframe);
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
-	
+	if(renderer->pipelineType==GTR::ePipeLineType::DEFERRED)
+		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
+		
 
 		
 	
@@ -361,6 +366,7 @@ void Application::onKeyDown( SDL_KeyboardEvent event )
 		case SDLK_ESCAPE: must_exit = true; break; //ESC key, kill the app
 		case SDLK_F1: render_debug = !render_debug; break;
 		case SDLK_f: camera->center.set(0, 0, 0); camera->updateViewMatrix(); break;
+		case SDLK_p: renderer->pipelineType = (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) ? GTR::ePipeLineType::FORWARD : GTR::ePipeLineType::DEFERRED; break;
 		case SDLK_F5: Shader::ReloadAll(); break;
 		case SDLK_F6:
 			scene->clear();

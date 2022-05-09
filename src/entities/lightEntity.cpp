@@ -52,22 +52,7 @@ void GTR::LightEntity::renderInMenu() {
 	
 	
 	ImGui::Checkbox("Cast shadows", &cast_shadows);
-	if (this->cast_shadows) {
-		ImGui::Checkbox("Show Shadowmap", &showSM);
-		if (showSM) {
-			Shader* shader = Shader::Get("depth");
-
-			shader->enable();
-			shader->setUniform("u_camera_nearfar", Vector2(this->shadow_cam->near_plane, this->shadow_cam->far_plane));
-			glViewport(Application::instance->window_width - 256, 0, 256, 256);
-
-			this->shadow_map->toViewport(shader);
-			glViewport(0, 0, Application::instance->window_width, Application::instance->window_height);
-
-			shader->disable();
-
-		}
-	}
+	
 	
 	//TODO
 	BaseEntity::renderInMenu();

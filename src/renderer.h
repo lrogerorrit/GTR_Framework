@@ -12,6 +12,11 @@ namespace GTR {
 		MULTI_PASS,
 	};
 
+	enum class ePipeLineType {
+		FORWARD,
+		DEFERRED
+	};
+
 	class Prefab;
 	class Material;
 	
@@ -42,8 +47,14 @@ namespace GTR {
 		bool useEmissive = true;
 
 		bool showAtlas = false;
+		bool showGBuffers = false;
+		
 		
 		int multiLightType = (int) eMultiLightType::SINGLE_PASS;
+		ePipeLineType pipelineType = ePipeLineType::FORWARD;
+
+		FBO* gbuffers_fbo= NULL;
+		FBO* illumination_fbo= NULL;
 		
 		
 
@@ -54,6 +65,10 @@ namespace GTR {
 
 		//renders several elements of the scene
 		void renderScene(GTR::Scene* scene, Camera* camera);
+
+		void RenderForward(Camera* camera, GTR::Scene* scene);
+		void RenderDeferred(Camera* camera, GTR::Scene* scene);
+		
 	
 		//to render a whole prefab (with all its nodes)
 		void renderPrefab(const Matrix44& model, GTR::Prefab* prefab, Camera* camera);
@@ -62,7 +77,9 @@ namespace GTR {
 		void renderNode(const Matrix44& model, GTR::Node* node, Camera* camera);
 
 		//to render one mesh given its material and transformation matrix
-		void renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
+		void renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
+		void uploadSingleLightToShader(Shader* shader, GTR::LightEntity* light);
+		void renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
 
 		
 	};

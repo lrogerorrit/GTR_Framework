@@ -179,7 +179,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 			//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
 		}
 		else if (light->light_type == eLightType::SPOT) {
-			light->shadow_cam->setPerspective(light->cone_angle, 1.0, 0.1, light->max_distance);
+			light->shadow_cam->setPerspective(light->cone_angle*2, 1.0, 0.1, light->max_distance);
 			light->shadow_cam->lookAt(light->model.getTranslation(), light->model * Vector3(0, 0, -1), light->model.rotateVector(Vector3(0, 1, 0)));
 		}
 		light->shadow_cam->enable();
