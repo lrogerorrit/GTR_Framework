@@ -26,8 +26,8 @@ namespace GTR {
 	
 	enum class eLightType {
 		POINT,
-		DIRECTIONAL,
 		SPOT,
+		DIRECTIONAL,
 	
 	};
 
@@ -64,9 +64,12 @@ namespace GTR {
 		bool cast_shadows;
 		Vector3 lightDirection;
 		Camera* shadow_cam= NULL;
-		FBO* shadow_fbo= NULL;
-		Texture* shadow_map= NULL;
-		bool showSM = false;
+		FBO* shadow_fbo= NULL; //todo refactor and remove
+		Texture* shadow_map= NULL; //todo refactor and remove
+		bool showSM = false; //todo refactor and remove
+
+		bool has_shadow_map=false;
+		int shadowAtlasIndex = -1;
 		
 		
 		

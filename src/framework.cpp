@@ -66,6 +66,7 @@ void Vector2::parseFromText(const char* text)
 
 
 Vector2 operator * (const Vector2& a, float v) { return Vector2(a.x * v, a.y * v); }
+Vector2 operator / (const Vector2& a, float v) { return Vector2((float)a.x / (float) v, (float)a.y / (float) v); }
 Vector2 operator + (const Vector2& a, const Vector2& b) { return Vector2(a.x + b.x, a.y + b.y); }
 Vector2 operator - (const Vector2& a, const Vector2& b) { return Vector2(a.x - b.x, a.y - b.y); }
 

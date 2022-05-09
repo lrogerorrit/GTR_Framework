@@ -61,6 +61,7 @@ public:
 };
 
 Vector2 operator * (const Vector2& a, float v);
+Vector2 operator / (const Vector2& a, float v);
 Vector2 operator + (const Vector2& a, const Vector2& b);
 Vector2 operator - (const Vector2& a, const Vector2& b);
 
@@ -95,6 +96,7 @@ public:
 
 	Vector3() { x = y = z = 0.0f; }
 	Vector3(float x, float y, float z) { this->x = x; this->y = y; this->z = z;	}
+	Vector3(Vector2 vec, float z) { this->x = vec.x; this->y = vec.y; this->z = z;	}
 
 	double length();
 	double length() const;

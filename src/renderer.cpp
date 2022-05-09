@@ -13,6 +13,7 @@
 #include "application.h"
 #include <algorithm>
 #include <string>
+#include "shadowAtlas.h"
 
 
 using namespace GTR;
@@ -35,26 +36,37 @@ bool transparencySort(const GTR::RenderCall& a, const GTR::RenderCall& b) {
 }
 
 bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
-	return (int)a->cast_shadows > (int)b->cast_shadows ;
+	if (a->cast_shadows && b->cast_shadows)
+		return (int)a->light_type > (int)b->light_type;
+	else
+		return (int)a->cast_shadows > (int)b->cast_shadows ;
 }
 	
 
 
 
+GTR::Renderer::Renderer()
+{
+	this->shadowMapAtlas = new shadowAtlas();
+}
+
 void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 {
 	//set the clear color (the background color)
 	glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
+	
 
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 	checkGLErrors();
-
+	
 	//render entities
 
 	this->render_calls.clear();
 	this->lights.clear();
-	
+	this->shadowMapAtlas->clearArray();
+
 	for (int i = 0; i < scene->entities.size(); ++i)
 	{
 		BaseEntity* ent = scene->entities[i];
@@ -79,6 +91,7 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 
 	
 
+		std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	if (this->orderNodes)
 		std::sort(this->render_calls.begin(), this->render_calls.end(), transparencySort);
 	
@@ -87,8 +100,12 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 	for (int i = 0; i < lights.size(); ++i) {
 		LightEntity* light = lights[i];
 		if (light->cast_shadows)
-			generateShadowMaps(light);
+			this->shadowMapAtlas->addLight(light);
+			///generateShadowMaps(light);
 	}
+	this->shadowMapAtlas->calculateShadows(this->render_calls);
+	
+//	this->shadowMapAtlas->atlasFBO->depth_texture->toViewport();
 
 	std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	
@@ -96,9 +113,16 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		RenderCall& rc = this->render_calls[i];
 		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
 		if (camera->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
+			
 			renderMeshWithMaterial(rc.model, rc.mesh, rc.material, camera);
 		
 	}
+	
+	
+	
+	
+	
+	
 }
 
 //renders all the prefab
@@ -284,9 +308,10 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			//light_shadowmap[i] = lights[i]->shadow_map;
 			shadowBias[i] = lights[i]->shadow_bias;
 			
-			if ((lights[i]->shadow_map && lights[i]->cast_shadows)) {
-				shader->setTexture(textureNames[i], lights[i]->shadow_map, 8 + i);
+			if ((lights[i]->has_shadow_map && lights[i]->cast_shadows)) {
+				//shader->setTexture(textureNames[i], lights[i]->shadow_map, 8 + i);
 				light_shadowmap_vp[i] = lights[i]->shadow_cam->viewprojection_matrix;
+				
 			}
 			
 
@@ -306,6 +331,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		
 		
 		
+		this->shadowMapAtlas->uploadDataToShader(shader,this->lights);
 		
 		
 		shader->setMatrix44Array("u_shadow_map_vp", (Matrix44*)&light_shadowmap_vp, num_lights);
@@ -317,6 +343,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		
 
 		shader->setUniform1("u_num_lights", num_lights);
+		
 
 
 	mesh->render(GL_TRIANGLES);
@@ -331,7 +358,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 		glBlendFunc(GL_SRC_ALPHA, material->alpha_mode==GTR::eAlphaMode::BLEND? GL_ONE_MINUS_SRC_ALPHA: GL_ONE);
 		
 		
-	
+		this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
 		for (int i = 0; i < num_lights; i++) {
 			LightEntity* light = lights[i];
 			if (i > 0) {
@@ -346,7 +373,7 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 			shader->setUniform("u_light_vector", light->lightDirection);
 			shader->setUniform("u_spotCosineCuttof", 0.0f);
 			shader->setUniform("u_cone_angle", 0.0f);
-			
+			shader->setUniform("light_index", i);
 			shader->setUniform("u_light_cast_shadows", false);
 			
 			
@@ -365,9 +392,9 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 				//get radians of cone angle
 				
 			}
-			if (light->shadow_map && light->cast_shadows) {
+			if (light->has_shadow_map && light->cast_shadows) {
 				shader->setUniform("u_light_cast_shadows", true);
-				shader->setUniform("u_light_shadowmap", light->shadow_map,8);
+				//shader->setUniform("u_light_shadowmap", light->shadow_map,8);
 				shader->setUniform("u_light_shadowmap_vp",light->shadow_cam->viewprojection_matrix);
 				shader->setUniform("u_shadow_bias", light->shadow_bias);
 
@@ -395,119 +422,9 @@ void Renderer::renderMeshWithMaterial(const Matrix44 model, Mesh* mesh, GTR::Mat
 }
 
 
-void Renderer::renderFlatMesh(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera) {
-	if (!mesh || !mesh->getNumVertices() || !material)
-		return;
-	assert(glGetError() == GL_NO_ERROR);
 
-	//define locals to simplify coding
-	Shader* shader = NULL;
-	GTR::Scene* scene = Application::instance->getActiveScene();
-	/*if (material->alpha_mode == GTR::eAlphaMode::BLEND)
-	{
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	}
-	else
-		glDisable(GL_BLEND);
 
-*/
-	//select if render both sides of the triangles
-	if (material->two_sided)
-		glDisable(GL_CULL_FACE);
-	else
-		glEnable(GL_CULL_FACE);
-	assert(glGetError() == GL_NO_ERROR);
 
-	
-	shader = Shader::Get("flat");
-	shader->enable();
-	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
-	shader->setUniform("u_model", model);
-	
-	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
-	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
-
-	glDepthFunc(GL_LESS);
-	glDisable(GL_BLEND);
-	mesh->render(GL_TRIANGLES);
-	shader->disable();
-}
-
-void GTR::Renderer::generateShadowMaps(LightEntity* light)
-{
-	if (!light->cast_shadows) {
-		if (light->shadow_fbo) {
-			delete light->shadow_fbo;
-			light->shadow_fbo = NULL;
-			light->shadow_map = NULL;
-			
-		}
-	
-	};
-	
-	if (!light->shadow_fbo)
-	{
-		light->shadow_fbo = new FBO();
-		light->shadow_fbo->setDepthOnly(1024,1024);
-		light->shadow_map = light->shadow_fbo->depth_texture;
-	}
-	Camera* view_cam = Camera::current;
-	
-	if (!light->shadow_cam)
-		light->shadow_cam = new Camera();
-
-	
-	//enable it to render inside the texture
-	light->shadow_fbo->bind();
-
-	
-	
-	//you can disable writing to the color buffer to speed up the rendering as we do not need it
-	
-	if (light->light_type == eLightType::DIRECTIONAL) {
-		light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
-		
-		light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - (light->lightDirection*20), Vector3(0, 1, 0));
-
-		//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
-	}
-	else if(light->light_type== eLightType::SPOT) {
-		light->shadow_cam->setPerspective(light->cone_angle, 1.0, 0.1, light->max_distance);
-		light->shadow_cam->lookAt(light->model.getTranslation(), light->model * Vector3(0, 0, -1), light->model.rotateVector(Vector3(0, 1, 0)));
-	}
-		light->shadow_cam->enable();
-	glColorMask(false, false, false, false);
-
-	//clear the depth buffer only (don't care of color)
-	glClear(GL_DEPTH_BUFFER_BIT);
-
-	//whatever we render here will be stored inside a texture, we don't need to do anything fanzy
-	//...
-	/*Shader* shader = NULL;
-	shader = Shader::Get("flat");
-	shader->enable();*/
-	
-	for (int i = 0; i < this->render_calls.size(); ++i) {
-		RenderCall& rc = this->render_calls[i];
-		if (rc.material->alpha_mode == eAlphaMode::BLEND)
-			continue;
-		if (light->shadow_cam->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
-			renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam);
-		//shader->setUniform("u_viewprojection", light->shadow_cam->viewprojection_matrix);
-		//rc.mesh->render(GL_TRIANGLES);
-
-	}
-	
-	//disable it to render back to the screen
-	light->shadow_fbo->unbind();
-
-	//allow to render back to the color buffer
-	glColorMask(true, true, true, true);
-
-	view_cam->enable();
-
-}
 
 
 

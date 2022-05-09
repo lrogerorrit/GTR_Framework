@@ -19,14 +19,19 @@ float mapFloat(float x, float in_min, float in_max, float out_min, float out_max
 
 
 \shadowAtlas
-uniform vec4 shadowMapInfo[MAX_LIGHTS]; //vec4(x,y,w,h);
+uniform vec3 shadowMapInfo[MAX_LIGHTS]; //vec3(x,y,size);
+uniform sampler2D shadowAtlasTexture;
 
 #include "mapFunction"
 
+
+
 vec4 getColorFromAtlas(vec2 uv, int shadowMapIndex,sampler2D atlas){
-	vec4 cellInfo= shadowMapInfo[shadowMapIndex];
-	vec2 pos= vec2(mapFloat(uv.x,0,1,cellInfo.x,cellInfo.x+cellInfo.z),
-				   mapFloat(uv.y,0,1,cellInfo.y,cellInfo.y+cellInfo.w));
+	vec3 cellInfo= shadowMapInfo[shadowMapIndex];
+	float x_displ= mapFloat(uv.x,0,1,0,cellInfo.z);
+	float y_displ= mapFloat(uv.y,0,1,0,cellInfo.z);
+	
+	vec2 pos= vec2(cellInfo.x+x_displ,cellInfo.y+y_displ);
 	return texture(atlas,pos);
 }
 
@@ -78,31 +83,35 @@ float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D sha
 
 	//from clip space to uv space
 	shadow_uv = shadow_uv * 0.5 + vec2(0.5);
+	
+	
 
 	//get point depth [-1 .. +1] in non-linear space
 	float real_depth = (proj_pos.z - bias) / proj_pos.w;
 
+	
 	//normalize from [-1..+1] to [0..+1] still non-linear
 	real_depth = real_depth * 0.5 + 0.5;
+	if (isDirectional)
+		if((real_depth<0.0||real_depth>1.0)||(shadow_uv.x < 0.0 || shadow_uv.x > 1.0 || shadow_uv.y < 0.0 || shadow_uv.y > 1.0))
+			return 1.0;
 
 	//read depth from depth buffer in [0..+1] non-linear
 	vec4 texture_depth= (useShadowAtlas==true)? getColorFromAtlas(shadow_uv,shadowIndex,shadowMap):texture( shadowMap, shadow_uv);
 	float shadow_depth = texture_depth.x;
+	//float shadow_depth = texture( shadowMap, shadow_uv).x;
 
 	//compute final shadow factor by comparing
 	float shadow_factor = 1.0;
 
 	//we can compare them, even if they are not linear
-	if( shadow_depth < real_depth ){
+	if( shadow_depth < real_depth &&  (real_depth>0.0&& real_depth<1.0) ){
 		shadow_factor = 0.0;
 	}
 	
 	
 	
 	//We do this to avoid directional light casting shadows on stuff that are out the shadowmap range
-	if (isDirectional)
-		if((real_depth<0.0||real_depth>1.0)||(shadow_uv.x < 0.0 || shadow_uv.x > 1.0 || shadow_uv.y < 0.0 || shadow_uv.y > 1.0))
-			shadow_factor=1.0;
 		
 	return shadow_factor;
 
@@ -204,6 +213,7 @@ uniform float u_time;
 uniform float u_alpha_cutoff;
 
 const int MAX_LIGHTS= 5;
+
 uniform vec3 u_light_position[MAX_LIGHTS];
 uniform vec3 u_light_color[MAX_LIGHTS];
 uniform float u_light_max_distance[MAX_LIGHTS];
@@ -229,7 +239,7 @@ uniform vec3 u_ambient_light;
 uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
 uniform bool u_useOcclusion;
-uniform sampler2D shadowAtlasTexture;
+
 
 
 
@@ -239,20 +249,7 @@ out vec4 FragColor;
 #include "normals"
 
 
-sampler2D getShadowTexture(int lightNum){
-	if (lightNum==0)
-		return u_shadow_texture0;
-	else if (lightNum==1)
-		return u_shadow_texture1;
-	else if (lightNum==2)
-		return u_shadow_texture2;
-	else if (lightNum==3)
-		return u_shadow_texture3;
-	else if (lightNum==4)
-		return u_shadow_texture4;
-		
 
-}
 
 
 
@@ -274,7 +271,9 @@ void main()
 	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y;
 	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z;
 	vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
+	
 	vec4 emissive= texture(u_emissive_texture,v_uv);
+	
 	
 	if(u_use_normalmap)
 		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
@@ -295,7 +294,7 @@ void main()
 			float shadowFactor= 1.0;
 			float NdotL= 1.0;
 			
-			if (u_light_type[i]==1){ //Directional
+			if (u_light_type[i]==2){ //Directional
 				L= normalize(u_light_vector[i]);
 				
 			}else{
@@ -304,7 +303,7 @@ void main()
 				L/=lightDist;
 				
 				
-				if (u_light_type[i]==2){ //Spot
+				if (u_light_type[i]==1){ //Spot
 					vec3 D= vec3(u_light_vector[i]);
 					float spotCosine= dot(D,L);
 					
@@ -322,7 +321,7 @@ void main()
 			}
 			
 			if (u_cast_shadow[i]==1)
-				shadowFactor= getShadowAttenuation(v_world_position,u_shadow_map_vp[i], u_shadowBias[i], shadowAtlasTexture,u_light_type[i]==1,true,i);
+				shadowFactor= getShadowAttenuation(v_world_position,u_shadow_map_vp[i], u_shadowBias[i], shadowAtlasTexture,u_light_type[i]==2,true,i);
 			
 			
 					
@@ -331,15 +330,14 @@ void main()
 			
 			
 			float multipliers=(attFactor*spotFactor*shadowFactor);
-			
 			light+= (NdotL*u_light_color[i])*multipliers;
+			
 		}
 		
 	}
 	color.xyz*= light;
 	
 	color.xyz+=emissive.xyz*u_emissive_factor;
-	
 	
 	FragColor = color;
 	//FragColor= emissive;
@@ -377,6 +375,9 @@ uniform sampler2D u_light_shadowmap;
 uniform mat4 u_light_shadowmap_vp;
 uniform float u_shadow_bias;
 
+uniform int light_index;
+
+const int MAX_LIGHTS= 5;
 
 //Phong textures:
 uniform sampler2D u_metallic_roughness_texture;
@@ -428,7 +429,7 @@ void main()
 	if(u_useOcclusion)
 		light*=occlusionFactor;
 	
-	if (u_light_type==1){ //Directional Light
+	if (u_light_type==2){ //Directional Light
 		L= normalize(u_light_vector);
 		
 	}
@@ -436,7 +437,7 @@ void main()
 		L= (u_light_position-v_world_position);
 		lightDist= length(L);
 		L/=lightDist;
-		if (u_light_type==2){ //Spot
+		if (u_light_type==1){ //Spot
 			vec3 D= u_light_vector;
 			float spotCosine= dot(D,L);
 			
@@ -453,7 +454,7 @@ void main()
 	}
 	
 	if (u_light_cast_shadows==true)
-		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,u_light_shadowmap,u_light_type==1,false,0);
+		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
 	
 	NdotL= max(dot(L,N),0.0);
 	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;

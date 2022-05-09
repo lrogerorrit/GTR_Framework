@@ -1,1 +1,55 @@
-﻿  visualstudio.vcxproj -> C:\Users\roger\Documents\3r\T3\gtr\GTR_Framework\framework.exe
+﻿  shadowAtlas.cpp
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(104,1): warning C4099: 'cJSON': type name first seen using 'class' now seen using 'struct'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(103): message : see declaration of 'cJSON'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(81,20): warning C4018: '<': signed/unsigned mismatch
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(125,33): warning C4244: 'argument': conversion from 'float' to 'GLint', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(125,21): warning C4244: 'argument': conversion from 'float' to 'GLint', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(150,41): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(150,33): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(150,25): warning C4244: 'argument': conversion from 'float' to 'GLint', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(150,17): warning C4244: 'argument': conversion from 'float' to 'GLint', possible loss of data
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(177,152): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(184,86): warning C4305: 'argument': truncation from 'double' to 'float'
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\shadowAtlas.cpp(193,91): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+     Creating library ..\..\framework.lib and object ..\..\framework.exp
+LINK : warning LNK4098: defaultlib 'LIBCMT' conflicts with use of other libs; use /NODEFAULTLIB:library
+  Generating code
+  3 of 4620 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    51 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+LINK : warning LNK4286: symbol '___glewDeleteBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewLinkProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewDeleteShader' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGenBuffers' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetProgramInfoLog' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewDetachShader' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewUniformMatrix4fv' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBlendEquationSeparate' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGenVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBlendEquation' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewShaderSource' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewDeleteProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewActiveTexture' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewAttachShader' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBufferData' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetUniformLocation' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBlendFuncSeparate' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewDeleteVertexArrays' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetProgramiv' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetShaderInfoLog' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewUniform1i' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewCreateProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBindBuffer' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewCreateShader' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetAttribLocation' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewCompileShader' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewGetShaderiv' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewDrawElementsBaseVertex' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewVertexAttribPointer' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewUseProgram' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBindSampler' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewBindVertexArray' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+LINK : warning LNK4286: symbol '___glewEnableVertexAttribArray' defined in 'glew32s.lib(glew.obj)' is imported by 'imgui_impl_opengl3.obj'
+glew32s.lib(glew.obj) : warning LNK4099: PDB 'vc120.pdb' was not found with 'glew32s.lib(glew.obj)' or at 'C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\vc120.pdb'; linking object as if no debug info
+  visualstudio.vcxproj -> C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\framework.exe

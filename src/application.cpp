@@ -15,6 +15,8 @@
 #include <string>
 #include <cstdio>
 
+#include "shadowAtlas.h"
+
 
 Application* Application::instance = nullptr;
 
@@ -149,7 +151,8 @@ void Application::render(void)
 
     glDisable(GL_DEPTH_TEST);
     //render anything in the gui after this
-
+	if (renderer->showAtlas)
+		renderer->shadowMapAtlas->displayDepthToViewport(256);
 	//the swap buffers is done in the main loop after this function
 }
 
@@ -304,6 +307,10 @@ void Application::renderDebugGUI(void)
 	}
 
 	ImGui::Checkbox("Wireframe", &render_wireframe);
+	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
+	
+
+		
 	
 	ImGui::ColorEdit3("BG color", scene->background_color.v);
 	ImGui::ColorEdit3("Ambient Light", scene->ambient_light.v);
