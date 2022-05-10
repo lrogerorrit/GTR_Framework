@@ -301,6 +301,7 @@ void main(){
 	float attFactor=1.0;
 	float shadowFactor=1.0;
 	float NdotL=1.0;
+	vec3 L;
 	vec2 uv= v_uv;
 	vec4 gb0_color= texture(u_gb0_texture,uv);
 	vec4 gb1_color= texture(u_gb1_texture,uv);
@@ -316,23 +317,27 @@ void main(){
 	
 	vec3 light= vec3(u_ambient_light);
 	
-	vec3 L= u_light_position-world_position;
-	
+	if (u_light_type==2) //Directional
+		L= normalize(u_light_vector);
+	else
+		L= u_light_position-world_position;
 	float light_dist= length(L);
+	
 	L/= light_dist;
 	
 	float att_factor= u_light_max_distance-light_dist;
 	
 	if (u_light_type==1){ //Spot
-			vec3 D= u_light_vector;
-			float spotCosine= dot(D,L);
-			
-			if (spotCosine>u_spotCosineCuttof){
-				spotFactor= pow(spotCosine,u_cone_exp);
-			}else{
-				spotFactor= 0.0;
-			}
+		vec3 D= u_light_vector;
+		float spotCosine= dot(D,L);
+		
+		if (spotCosine>u_spotCosineCuttof){
+			spotFactor= pow(spotCosine,u_cone_exp);
+		}else{
+			spotFactor= 0.0;
 		}
+	}
+	
 	attFactor= (u_light_max_distance-light_dist);
 	attFactor/= u_light_max_distance;
 	attFactor*=pow(attFactor,2.0);
