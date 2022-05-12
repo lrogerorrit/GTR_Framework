@@ -160,7 +160,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		
 	gbuffers_fbo->bind();
 
-	glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
+	glClearColor(0,0,0, 1.0);
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -176,6 +176,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	gbuffers_fbo->unbind();
 	//render to screen
 	illumination_fbo->bind();
+	glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
+	
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	Mesh* quad = Mesh::getQuad();
 	Shader* shader = Shader::Get("deferred");
@@ -327,7 +330,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	if (texture == NULL) texture = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureEmissive == NULL) textureEmissive = Texture::getBlackTexture(); //a 1x1 white texture
 	if (textureMRT == NULL) textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
-	if (textureNormal == NULL) textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
+	//if (textureNormal == NULL)  //textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
 
 
 	//select if render both sides of the triangles
@@ -370,7 +373,8 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 		shader->setUniform("u_metallic_roughness_texture", textureMRT, 2);
 	if (textureNormal)
 		shader->setUniform("u_normal_texture", textureNormal, 3);
-
+	else
+		shader->setUniform("u_use_normalmap", false);
 
 	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);

@@ -227,6 +227,8 @@ in vec3 v_normal;
 in vec2 v_uv;
 in vec4 v_color;
 
+
+
 uniform vec4 u_color;
 uniform sampler2D u_texture;
 uniform sampler2D u_metallic_roughness_texture;
@@ -235,24 +237,39 @@ uniform sampler2D u_normal_texture;
 uniform float u_time;
 uniform float u_alpha_cutoff;
 
+uniform bool u_use_normalmap;
+uniform float u_emissive_factor;
+uniform bool u_useOcclusion;
+
+
 
 layout (location=0) out vec4 GB0;
 layout (location=1) out vec4 GB1;
 layout (location=2) out vec4 GB2;
 
+#include "normals"
+
 void main()
 {
-	vec3 N= normalize(v_normal);
+	vec3 N;
+	if(u_use_normalmap){
+		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
+		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
+	}
+	else
+		N= normalize(v_normal);
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	color *= texture( u_texture, v_uv );
+	
+	vec4 emmisiveCol= texture(u_emissive_texture,v_uv);
 
 	if(color.a < u_alpha_cutoff)
 		discard;
 
 	GB0 = vec4(color.xyz,1.0);
 	GB1= vec4(N*.5+vec3(0.5),1.0);
-	GB2= vec4(v_world_position*.001,1.0);
+	GB2= vec4(emmisiveCol.xyz*u_emissive_factor,1.0);
 }
 
 \deferred.fs
@@ -287,6 +304,9 @@ uniform float u_shadow_bias;
 uniform int light_index;
 
 
+
+
+
 uniform float ;
 
 
@@ -301,14 +321,20 @@ void main(){
 	float attFactor=1.0;
 	float shadowFactor=1.0;
 	float NdotL=1.0;
+	vec3 L;
 	vec2 uv= v_uv;
 	vec4 gb0_color= texture(u_gb0_texture,uv);
 	vec4 gb1_color= texture(u_gb1_texture,uv);
 	vec4 gb2_color= texture(u_gb2_texture,uv);
+	
+	
 	float depth= texture(u_depth_texture,uv).x;
 	vec4 screen_pos= vec4(uv.x*2.0-1.0,uv.y*2.0-1.0,depth*2.0-1.0,1.0);
 	vec4 proj_worldpos= u_inverse_viewprojection*screen_pos;
 	vec3 world_position= proj_worldpos.xyz/proj_worldpos.w;
+	
+	
+	
 
 	vec3 N= normalize(gb1_color.xyz*2.0-vec3(1.0));
 	
@@ -316,26 +342,30 @@ void main(){
 	
 	vec3 light= vec3(u_ambient_light);
 	
-	vec3 L= u_light_position-world_position;
-	
+	if (u_light_type==2) //Directional
+		L= normalize(u_light_vector);
+	else
+		L= u_light_position-world_position;
 	float light_dist= length(L);
+	
 	L/= light_dist;
 	
 	float att_factor= u_light_max_distance-light_dist;
 	
 	if (u_light_type==1){ //Spot
-			vec3 D= u_light_vector;
-			float spotCosine= dot(D,L);
-			
-			if (spotCosine>u_spotCosineCuttof){
-				spotFactor= pow(spotCosine,u_cone_exp);
-			}else{
-				spotFactor= 0.0;
-			}
+		vec3 D= u_light_vector;
+		float spotCosine= dot(D,L);
+		
+		if (spotCosine>u_spotCosineCuttof){
+			spotFactor= pow(spotCosine,u_cone_exp);
+		}else{
+			spotFactor= 0.0;
 		}
+	}
+	
 	attFactor= (u_light_max_distance-light_dist);
 	attFactor/= u_light_max_distance;
-	//attFactor*=pow(attFactor,2.0);
+	attFactor*=pow(attFactor,2.0);
 	attFactor= max(attFactor,0.0);
 	
 	
@@ -344,9 +374,9 @@ void main(){
 	
 	NdotL= max(dot(L,N),0.0);
 	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
-	
+	light+= gb2_color.xyz*1.0;
 	color.xyz*= light;
-	//color.xyz+=emissive.xyz*u_emissive_factor;
+	//color.xyz+=//u_emissive_factor;
 	FragColor = color;
 }
 
@@ -402,13 +432,14 @@ void main()
 	float occlusionFactor= texture(u_metallic_roughness_texture,v_uv).x;
 	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y;
 	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z;
-	vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 	
 	vec4 emissive= texture(u_emissive_texture,v_uv);
 	
 	
-	if(u_use_normalmap)
+	if(u_use_normalmap){
+		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
+	}
 	vec3 light= vec3(u_ambient_light);
 	if(u_useOcclusion)
 		light*=occlusionFactor;
@@ -529,11 +560,12 @@ void main()
 	float occlusionFactor= texture(u_metallic_roughness_texture,v_uv).x;
 	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y;
 	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z;
-	vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 	vec4 emissive= texture(u_emissive_texture,v_uv);
 	
-	if(u_use_normalmap)	
+	if(u_use_normalmap){
+		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
+	}
 	vec3 light=u_ambient_light;
 	if(u_useOcclusion)
 		light*=occlusionFactor;
