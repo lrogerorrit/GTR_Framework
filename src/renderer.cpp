@@ -183,6 +183,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
 	
+	
 	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
 	Shader* shader = Shader::Get("deferred");
 	shader->enable();
@@ -192,6 +193,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
 	shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
 	shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
+	shader->setUniform("u_use_normalmap", this->useNormalMap);
+	shader->setFloat("u_useOcclusion", this->useOcclusion);
 
 	//pass the inverse projection of the camera to reconstruct world pos.
 	Matrix44 inv_vp = camera->viewprojection_matrix;
@@ -230,6 +234,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 					shader->enable();
 					shader->setUniform("u_ambient_light",(i==0)? scene->ambient_light:Vector3());
 					glEnable(GL_CULL_FACE);
+					
+					shader->setUniform("u_use_normalmap", this->useNormalMap);
+					shader->setFloat("u_useOcclusion", this->useOcclusion);
 					shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
 					shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
 					shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
@@ -300,8 +307,6 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		gbuffers_fbo->depth_texture->toViewport(shaderb);
 		shaderb->disable();
 		glViewport(0, 0,width,height);
-		
-	
 	}
 }
 
@@ -412,6 +417,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
+	
 	float t = getTime();
 	shader->setUniform("u_time", t);
 

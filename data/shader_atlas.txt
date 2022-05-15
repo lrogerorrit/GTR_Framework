@@ -309,7 +309,7 @@ uniform int light_index;
 
 uniform bool u_inClipSpace;
 uniform bool u_useOcclusion;
-uniform float occlusionFactor;
+//uniform float occlusionFactor;
 
 
 
@@ -350,7 +350,7 @@ void main(){
 	
 	vec3 light= vec3(u_ambient_light);
 	if(u_useOcclusion)
-		light*=occlusionFactor;
+		light*=gb2_color.x;
 	
 	if (u_light_type==2) //Directional
 		L= normalize(u_light_vector);

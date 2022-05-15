@@ -309,6 +309,7 @@ uniform int light_index;
 
 uniform bool u_inClipSpace;
 uniform bool u_useOcclusion;
+//uniform float occlusionFactor;
 
 
 
