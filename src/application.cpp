@@ -311,9 +311,10 @@ void Application::renderDebugGUI(void)
 
 	ImGui::Checkbox("Wireframe", &render_wireframe);
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
-	if(renderer->pipelineType==GTR::ePipeLineType::DEFERRED)
+	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
-		
+		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
+	}
 
 		
 	

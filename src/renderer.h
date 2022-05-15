@@ -48,6 +48,7 @@ namespace GTR {
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
+		bool isOptimizedDeferred = true;
 		
 		
 		int multiLightType = (int) eMultiLightType::SINGLE_PASS;

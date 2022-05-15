@@ -153,7 +153,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		illumination_fbo->create(width, height,
 			1, 					//one textures
 			GL_RGB,				//three channels
-			GL_UNSIGNED_BYTE, //1 byte
+			GL_FLOAT, //1 byte
 			true);				//add depth_texture
 
 	}
@@ -181,7 +181,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	Mesh* quad = Mesh::getQuad();
-	Shader* shader = Shader::Get("deferred");
+	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
+	
+	Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
 	shader->enable();
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 
@@ -198,6 +200,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 	this->shadowMapAtlas->uploadDataToShader(shader,this->lights);
 
+	if (this->isOptimizedDeferred) {
+		shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+		glEnable(GL_CULL_FACE);
+	}
 
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
@@ -217,10 +223,24 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 				glEnable(GL_BLEND);
 			}
+			
+			Matrix44 m;
+			
+			m.setTranslation(light->model.getTranslation());
+			m.scale(light->max_distance, light->max_distance, light->max_distance);
+
+			shader->setUniform("u_model", m);
+
+			
 			uploadSingleLightToShader(shader, light);
 			shader->setUniform("light_index", i);
-
-			quad->render(GL_TRIANGLES);
+			
+			if (this->isOptimizedDeferred) {
+				glFrontFace(GL_CW);
+				sphere->render(GL_TRIANGLES);
+				glFrontFace(GL_CCW);
+			}else
+				quad->render(GL_TRIANGLES);
 			
 			shader->setUniform("u_ambient_light", Vector3());
 			
@@ -230,6 +250,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	illumination_fbo->unbind();
 	glDisable(GL_BLEND);
+	glDisable(GL_CULL_FACE);
 	illumination_fbo->color_textures[0]->toViewport();
 	//Apply multipass reading to gbuffers
 
