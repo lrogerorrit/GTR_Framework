@@ -183,7 +183,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
 	
-	Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
+	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
+	Shader* shader = Shader::Get("deferred");
 	shader->enable();
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 
@@ -199,14 +200,17 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	//pass the inverse window resolution, this may be useful
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 	this->shadowMapAtlas->uploadDataToShader(shader,this->lights);
-
+	/*
 	if (this->isOptimizedDeferred) {
 		shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 		glEnable(GL_CULL_FACE);
-	}
+	}*/
 
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
+	
+	bool renderToSphere = false;
+
 	if (!lights.size()) {
 		shader->setUniform("u_ambient_light", Vector3());
 		quad->render(GL_TRIANGLES);
@@ -216,6 +220,33 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		{
 			
 			LightEntity* light = lights[i];
+
+			if (isOptimizedDeferred && !renderToSphere) {
+				if ((int) light->light_type < (int) eLightType::DIRECTIONAL) {
+					
+					renderToSphere = true;
+					shader->disable();
+					shader= Shader::Get("deferred_opti");
+					shader->enable();
+					shader->setUniform("u_ambient_light",(i==0)? scene->ambient_light:Vector3());
+					glEnable(GL_CULL_FACE);
+					shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
+					shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
+					shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
+					shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+					shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+					shader->setUniform("u_inverse_viewprojection", inv_vp);
+					//pass the inverse window resolution, this may be useful
+					shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
+					this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
+					glDisable(GL_DEPTH_TEST);
+					glDisable(GL_BLEND);
+
+					
+
+				}
+				
+			}
 			if (i == 0)
 				glDisable(GL_BLEND);
 			else
@@ -235,7 +266,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			uploadSingleLightToShader(shader, light);
 			shader->setUniform("light_index", i);
 			
-			if (this->isOptimizedDeferred) {
+			if (renderToSphere) {
 				glFrontFace(GL_CW);
 				sphere->render(GL_TRIANGLES);
 				glFrontFace(GL_CCW);

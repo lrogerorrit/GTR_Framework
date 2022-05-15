@@ -263,14 +263,17 @@ void main()
 	vec4 color = u_color;
 	color *= texture( u_texture, v_uv );
 	
-	vec4 emmisiveCol= texture(u_emissive_texture,v_uv);
+	vec3 emmisiveCol= texture(u_emissive_texture,v_uv).xyz*u_emissive_factor;
+	vec3 MRT_texture= texture(u_metallic_roughness_texture,v_uv).xyz;
+	
+	
 
 	if(color.a < u_alpha_cutoff)
 		discard;
 
-	GB0 = vec4(color.xyz,1.0);
-	GB1= vec4(N*.5+vec3(0.5),1.0);
-	GB2= vec4(emmisiveCol.xyz*u_emissive_factor,1.0);
+	GB0 = vec4(color.xyz,emmisiveCol.x);
+	GB1= vec4(N*.5+vec3(0.5),emmisiveCol.y);
+	GB2= vec4(MRT_texture,emmisiveCol.z);
 }
 
 \deferred.fs
@@ -305,6 +308,8 @@ uniform float u_shadow_bias;
 uniform int light_index;
 
 uniform bool u_inClipSpace;
+uniform bool u_useOcclusion;
+uniform float occlusionFactor;
 
 
 
@@ -325,9 +330,10 @@ void main(){
 	vec3 L;
 	
 	vec2 uv = (u_inClipSpace)?v_uv:gl_FragCoord.xy * u_iRes.xy; 
-	vec4 gb0_color= texture(u_gb0_texture,uv);
-	vec4 gb1_color= texture(u_gb1_texture,uv);
-	vec4 gb2_color= texture(u_gb2_texture,uv);
+	vec4 gb0_color= texture(u_gb0_texture,uv); //Albedo  
+	vec4 gb1_color= texture(u_gb1_texture,uv); //Normal
+	vec4 gb2_color= texture(u_gb2_texture,uv); //MRT
+	vec3 emmisiveCol= vec3(gb0_color.w,gb1_color.w,gb2_color.w);
 	
 	
 	float depth= texture(u_depth_texture,uv).x;
@@ -343,6 +349,8 @@ void main(){
 	vec4 color= vec4(gb0_color.xyz,1.0);
 	
 	vec3 light= vec3(u_ambient_light);
+	if(u_useOcclusion)
+		light*=occlusionFactor;
 	
 	if (u_light_type==2) //Directional
 		L= normalize(u_light_vector);
@@ -376,7 +384,7 @@ void main(){
 	
 	NdotL= max(dot(L,N),0.0);
 	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
-	light+= gb2_color.xyz;
+	light+= emmisiveCol;
 	color.xyz*= light;
 	//color.xyz+=//u_emissive_factor;
 	FragColor = color;
