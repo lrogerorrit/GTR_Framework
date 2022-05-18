@@ -10,6 +10,9 @@ deferred_opti basic.vs deferred.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
 
+\constants
+#define PI 3.14159
+
 \mapFunction
 int map(int x, int in_min, int in_max, int out_min, int out_max){
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
@@ -119,7 +122,113 @@ float getShadowAttenuation(vec3 pos, mat4 viewProject, float bias, sampler2D sha
 
 }
 
+\pointdata
+
+struct pointData{
+	vec3 N; //normal
+	vec3 L; // vec towards light
+	vec3 V; // vec toward eye
+	vec3 R; // reflected L vec
+	vec3 H; // half vec between V & L
+	
+	
+	float NdH;
+	float NdV;
+	float NdL;
+	float VdH;
+	
+	vec3 f0;
+	float alpha;
+	
+	float metalness;
+	float roughness;
+	float data;
+	vec4 albedo;
+};
+
+pointData makePointData(vec3 N, vec3 L, vec3 V, vec3 col, float metal, float rough){
+	pointData data;
+	
+	vec3 h= normalize(L+V);
+	vec3 r= reflect(L,N);
+	
+	data.N= N;
+	data.L= L;
+	data.V= V;
+	data.R= r;
+	data.H= h; 
+	data.metalness= metal;
+	data.roughness= rough;
+	data.albedo= vec4(col,1.0);
+	data.alpha= rough*rough;
+	data.f0=  mix(vec3(.5),col.xyz,vec3(metal));
+	
+	data.NdH= max(0.0, dot(N,h));
+	data.NdV= max(0.0, dot(V,N));
+	data.NdL= max(0.0, dot(L,N));
+	data.VdH= max(0.0, dot(V,h));
+	
+	return data;
+};
+
+
+\pbr
+#include "pointdata"
+
+
+float walter_GGX(pointData data){
+	float a2= data.alpha*data.alpha;
+	float f= (data.NdH* data.NdH)*(a2-1.0)+ 1.0;
+	return (a2/(PI*f*f));
+}
+
+vec3 F_Schlick_vec(pointData data){
+	float f= pow(1.0- data.VdH,5.0);
+	return data.f0+(vec3(1.0)-data.f0)*f;
+}
+
+float GGX(float dotVal,float k){
+	return dotVal/(dotVal*(1.0-k)+k);
+}
+
+float G_Smith(pointData data){
+	float k= pow(data.roughness+1.0,2.0)/8.0;
+	return GGX(data.NdL,k)*GGX(data.NdV,k);
+}
+
+vec3 specularBRDF(pointData data){
+	float D= walter_GGX(data);
+	vec3 F= F_Schlick_vec(data);
+	float G= G_Smith(data);
+	
+	vec3 spec= D*G*F;
+	spec/= (4.0*data.NdL* data.NdV + 1e-6);
+	
+	return spec;
+
+}
+
+vec3 getPBRColor(pointData data){
+	
+	
+	vec3 diffCol= (1.0- data.metalness)* data.albedo.xyz;
+	vec3 specular= specularBRDF(data);
+	vec3 diffuse= diffCol/PI;
+	
+	return (specular+diffuse);
+	
+	
+
+
+
+}
+
+
+
 \commonForwardUniforms
+
+#include "constants"
+
 in vec3 v_position;
 in vec3 v_world_position;
 in vec3 v_normal;
@@ -132,6 +241,7 @@ uniform float u_time;
 uniform float u_alpha_cutoff;
 
 uniform vec3 u_ambient_light;
+uniform vec3 u_camera_position;
 
 uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
@@ -279,6 +389,7 @@ void main()
 \deferred.fs
 #version 330 core
 
+#include "constants"
 in vec2 v_uv;
 
 const int MAX_LIGHTS= 5;
@@ -298,6 +409,9 @@ uniform vec3 u_light_color;
 uniform vec3 u_light_position;
 uniform vec3 u_light_vector;
 uniform vec3 u_cone_angle;
+
+uniform vec3 u_camera_position;
+
 uniform float u_light_max_distance;
 uniform int u_light_type;
 uniform float u_spotCosineCuttof;
@@ -320,6 +434,7 @@ out vec4 FragColor;
 
 #include "shadows"
 #include "normals"
+#include "pbr"
 
 void main(){
 	
@@ -345,6 +460,7 @@ void main(){
 	
 
 	vec3 N= normalize(gb1_color.xyz*2.0-vec3(1.0));
+	vec3 V= normalize(u_camera_position-world_position);
 	
 	vec4 color= vec4(gb0_color.xyz,1.0);
 	
@@ -382,8 +498,11 @@ void main(){
 	if (u_light_cast_shadows==true)
 		shadowFactor= getShadowAttenuation(world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
 	
+	pointData pData= makePointData(N,L,V,u_light_color,gb2_color.y,gb2_color.z);
 	NdotL= max(dot(L,N),0.0);
-	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	//light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	float multipliers=(attFactor*spotFactor*shadowFactor);
+			light+= getPBRColor(pData)*multipliers;
 	light+= emmisiveCol;
 	color.xyz*= light;
 	//color.xyz+=//u_emissive_factor;
@@ -419,6 +538,7 @@ out vec4 FragColor;
 
 #include "shadows"
 #include "normals"
+#include "pbr"
 
 
 
@@ -431,6 +551,7 @@ void main()
 	vec3 N= normalize(v_normal);
 	vec2 uv = v_uv;
 	vec4 color = u_color;
+	vec3 V= normalize(u_camera_position-v_world_position);
 	
 	color *= texture( u_texture, v_uv );
 	
@@ -498,12 +619,13 @@ void main()
 			
 			
 					
-			
+			pointData pData= makePointData(N,L,V,u_light_color[i],metallicFactor,roughnessFactor);
 			NdotL= max(dot(L,N),0.0);
 			
 			
 			float multipliers=(attFactor*spotFactor*shadowFactor);
-			light+= (NdotL*u_light_color[i])*multipliers;
+			light+= getPBRColor(pData)*multipliers;
+			//light+= (NdotL*u_light_color[i])*multipliers;
 			
 		}
 		
@@ -549,6 +671,7 @@ out vec4 FragColor;
 
 #include "shadows"
 #include "normals"
+#include "pbr"
 
 void main()
 {
@@ -556,6 +679,7 @@ void main()
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	vec3 L;
+	vec3 V= normalize(u_camera_position-v_world_position);
 	color *= texture( u_texture, v_uv );
 	if(color.a < u_alpha_cutoff)
 		discard;
@@ -608,10 +732,17 @@ void main()
 		shadowFactor= getShadowAttenuation(v_world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
 	
 	NdotL= max(dot(L,N),0.0);
-	light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	
+	pointData pData= makePointData(N,L,V,u_light_color,metallicFactor,roughnessFactor);
+	
+	float multipliers= attFactor*spotFactor*shadowFactor;
+	
+	light+= getPBRColor(pData)*multipliers;
+	//light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	
 	color.xyz*= light;
-	color.xyz+=emissive.xyz*u_emissive_factor;
+	if(light_index==0)
+		color.xyz+=emissive.xyz*u_emissive_factor;
 	FragColor = color;
 }
 
