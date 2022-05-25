@@ -147,6 +147,7 @@ void Application::render(void)
 
 	//Draw the floor grid, helpful to have a reference point
 	if (render_debug) {
+		//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		//drawGrid();
 	}
 
@@ -313,6 +314,7 @@ void Application::renderDebugGUI(void)
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
 	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
+		ImGui::Checkbox("Show SSAO", &renderer->showSSAO);
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 	}
 

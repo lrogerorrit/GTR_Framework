@@ -117,6 +117,8 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 	
 }
 
+
+
 void GTR::Renderer::RenderForward(Camera* camera, GTR::Scene* scene)
 {
 	//set the clear color (the background color)
@@ -137,15 +139,24 @@ void GTR::Renderer::RenderForward(Camera* camera, GTR::Scene* scene)
 
 void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Mesh* quad) {
 	// start rendering inside the ssao texture
-		ssao_fbo->bind();
+	ssao_fbo->bind();
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
 
+	if (!randomPoints.size()) {
+		
+		randomPoints.clear();
+		randomPoints = generateSpherePoints(64, 1, false);
+		
+	}
+	
 	//get the shader for SSAO (remember to create it using the atlas)
 	Shader* shader = Shader::Get("ssao");
 	shader->enable();
 
 	//send info to reconstruct the world position
 	shader->setUniform("u_inverse_viewprojection", invVP);
-	shader->setTexture("u_depth_texture", gbuffers_fbo->depth_texture, 0);
+	shader->setTexture("u_depth_texture", gbuffers_fbo->depth_texture, 3);
 	//we need the pixel size so we can center the samples 
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)gbuffers_fbo->depth_texture->width,
 		1.0 / (float)gbuffers_fbo->depth_texture->height));
@@ -189,10 +200,25 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_FLOAT, //1 byte
 			true);				//add depth_texture
 		
-		ssao_fbo->create(width,height);
+		ssao_fbo->create(width,height,
+			1,
+			GL_LUMINANCE,
+			GL_FLOAT,
+			false);
 		ssao_blur->create(width, height);
 		
 	}
+	//bind the texture we want to change
+	gbuffers_fbo->depth_texture->bind();
+
+	//disable using mipmaps
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	//enable bilinear filtering
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	
+	gbuffers_fbo->depth_texture->unbind();
 		
 	gbuffers_fbo->bind();
 
@@ -212,10 +238,11 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	Matrix44 inv_vp = camera->viewprojection_matrix;
+	inv_vp.inverse();
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
-	renderSSAO(camera, scene,inv_vp,quad);
 
+	renderSSAO(camera, scene,inv_vp,quad);
 	
 	//render to screen
 	illumination_fbo->bind();
@@ -239,7 +266,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 
 	//pass the inverse projection of the camera to reconstruct world pos.
-	inv_vp.inverse();
+	
 	shader->setUniform("u_inverse_viewprojection", inv_vp);
 	//pass the inverse window resolution, this may be useful
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
@@ -349,6 +376,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		shaderb->disable();
 		glViewport(0, 0,width,height);
 	}
+
+	if (showSSAO) {
+		ssao_fbo->color_textures[0]->toViewport();
+	}
 }
 
 //renders all the prefab
@@ -398,6 +429,7 @@ void Renderer::renderNode(const Matrix44& prefab_model, GTR::Node* node, Camera*
 	for (int i = 0; i < node->children.size(); ++i)
 		renderNode(prefab_model, node->children[i], camera);
 }
+
 
 
 void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera)
@@ -610,7 +642,12 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 
 	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
-	
+	if (this->pipelineType == ePipeLineType::DEFERRED &&this->useSSAO) {
+		shader->setUniform("u_use_SSAO", true);
+	}
+	else {
+		shader->setUniform("u_use_SSAO", true);
+	}
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 	
 	
@@ -726,7 +763,7 @@ std::vector<Vector3> GTR::generateSpherePoints(int num, float radius, bool hemi)
 {
 		std::vector<Vector3> points;
 		points.resize(num);
-		for (int i = 0; i < num; i += 3)
+		for (int i = 0; i < num; ++i)
 		{
 			Vector3& p = points[i];
 			float u = random();

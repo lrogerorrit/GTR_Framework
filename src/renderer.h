@@ -47,9 +47,11 @@ namespace GTR {
 		bool useOcclusion = true;
 		bool useNormalMap = true;
 		bool useEmissive = true;
+		bool useSSAO = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
+		bool showSSAO = false;
 		bool isOptimizedDeferred = true;
 		
 		
