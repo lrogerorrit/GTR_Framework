@@ -316,6 +316,7 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
 		ImGui::Checkbox("Show SSAO", &renderer->showSSAO);
 		ImGui::Checkbox("Use SSAO", &renderer->useSSAO);
+		ImGui::Checkbox("Use SSAO Blur", &renderer->useSSAOBlur);
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 	}
 

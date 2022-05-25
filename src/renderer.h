@@ -48,10 +48,11 @@ namespace GTR {
 		bool useNormalMap = true;
 		bool useEmissive = true;
 		bool useSSAO = false;
+		bool useSSAOBlur = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
-		bool showSSAO = false;
+		bool showSSAO = true;
 		bool isOptimizedDeferred = true;
 		
 		
@@ -61,7 +62,7 @@ namespace GTR {
 		FBO* gbuffers_fbo= NULL;
 		FBO* illumination_fbo= NULL;
 		FBO* ssao_fbo= NULL;
-		Texture* ssao_blur = NULL;
+		
 		
 		
 		

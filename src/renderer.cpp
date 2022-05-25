@@ -96,7 +96,7 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		LightEntity* light = lights[i];
 		if (light->cast_shadows)
 			this->shadowMapAtlas->addLight(light);
-			///generateShadowMaps(light);
+			//generateShadowMaps(light);
 	}
 	this->shadowMapAtlas->calculateShadows(this->render_calls);
 	
@@ -146,7 +146,7 @@ void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Me
 	if (!randomPoints.size()) {
 		
 		randomPoints.clear();
-		randomPoints = generateSpherePoints(64, 1, false);
+		randomPoints = generateSpherePoints(64, 1, true);
 		
 	}
 	
@@ -157,6 +157,7 @@ void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Me
 	//send info to reconstruct the world position
 	shader->setUniform("u_inverse_viewprojection", invVP);
 	shader->setTexture("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+	shader->setTexture("u_normal_texture", gbuffers_fbo->color_textures[1], 4);
 	//we need the pixel size so we can center the samples 
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)gbuffers_fbo->depth_texture->width,
 		1.0 / (float)gbuffers_fbo->depth_texture->height));
@@ -169,9 +170,26 @@ void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Me
 
 	//render fullscreen quad
 	quad->render(GL_TRIANGLES);
-
+	shader->disable();
 	//stop rendering to the texture
 	ssao_fbo->unbind();
+	ssao_fbo->bind();
+	
+	if (this->useSSAOBlur) {
+		
+		glClear( GL_DEPTH_BUFFER_BIT);
+		Shader* shaderb = Shader::Get("ssaoBlur");
+		shaderb->enable();
+		shaderb->setUniform("u_inverse_viewprojection", invVP);
+		shaderb->setUniform("u_ssao_texture", ssao_fbo->color_textures[0], 3);
+		shaderb->setUniform("u_iRes", Vector2(1.0 / (float)ssao_fbo->color_textures[0]->width,
+			1.0 / (float)ssao_fbo->color_textures[0]->height));
+		quad->render(GL_TRIANGLES);
+		shaderb->disable();	
+	}
+	ssao_fbo->unbind();
+
+	
 
 }
 
@@ -186,7 +204,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		gbuffers_fbo= new FBO();
 		illumination_fbo= new FBO();
 		ssao_fbo = new FBO();
-		ssao_blur = new Texture();
+		
 		
 		gbuffers_fbo->create(width,height,
 			3, 			//three textures
@@ -201,11 +219,11 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			true);				//add depth_texture
 		
 		ssao_fbo->create(width,height,
-			1,
+			2,
 			GL_LUMINANCE,
 			GL_FLOAT,
 			false);
-		ssao_blur->create(width, height);
+		
 		
 	}
 	//bind the texture we want to change
@@ -266,7 +284,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("u_use_SSAO", this->useSSAO);
 	if (this->useSSAO)
-		shader->setUniform("u_SSAO_texture", this->ssao_fbo->color_textures[0], 4);
+		shader->setUniform("u_SSAO_texture",(this->useSSAOBlur)? this->ssao_fbo->color_textures[1]:this->ssao_fbo->color_textures[0], 4);
 	
 
 	//pass the inverse projection of the camera to reconstruct world pos.
@@ -383,7 +401,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	}
 
 	if (showSSAO) {
-		ssao_fbo->color_textures[0]->toViewport();
+		if (this->useSSAOBlur)
+			ssao_fbo->color_textures[1]->toViewport();
+		else
+			ssao_fbo->color_textures[0]->toViewport();
 	}
 }
 
