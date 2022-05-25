@@ -37,7 +37,7 @@ Texture* texture = nullptr;
 float cam_speed = 10;
 int activeSceneNum = 1;
 
-const int MAX_SCENES = 2;
+const int MAX_SCENES = 3;
 
 GTR::Scene* Application::getActiveScene()
 {
