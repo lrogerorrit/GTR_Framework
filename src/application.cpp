@@ -315,6 +315,7 @@ void Application::renderDebugGUI(void)
 	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
 		ImGui::Checkbox("Show SSAO", &renderer->showSSAO);
+		ImGui::Checkbox("Use SSAO", &renderer->useSSAO);
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 	}
 

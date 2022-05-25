@@ -41,6 +41,19 @@ vec4 getColorFromAtlas(vec2 uv, int shadowMapIndex,sampler2D atlas){
 	return texture(atlas,pos);
 }
 
+\ssaoCalc
+uniform bool u_use_SSAO;
+uniform sampler2D u_SSAO_texture;
+
+
+float getFactor(float factor, vec2 uv){
+	if (!u_use_SSAO)
+		return factor;
+	else
+		return texture(u_SSAO_texture,uv).x;
+
+}
+
 
 \normals
 
@@ -378,7 +391,7 @@ void main(){
 		//compare true depth with its depth
 		float diff= proj.z-pdepth;
 		
-		if( diff>0.0 && diff<.001  ) //if true depth smaller, is inside
+		if( pdepth < proj.z ) //if true depth smaller, is inside
 			num--; //remove this point from the list of visible
 	}
 

@@ -41,6 +41,19 @@ vec4 getColorFromAtlas(vec2 uv, int shadowMapIndex,sampler2D atlas){
 	return texture(atlas,pos);
 }
 
+\ssaoCalc
+uniform bool u_use_SSAO;
+uniform sampler2D u_SSAO_texture;
+
+
+float getFactor(float factor, vec2 uv){
+	if (!u_use_SSAO)
+		return factor;
+	else
+		return texture(u_SSAO_texture,uv).x;
+
+}
+
 
 \normals
 
@@ -498,6 +511,7 @@ out vec4 FragColor;
 #include "shadows"
 #include "normals"
 #include "pbr"
+#include "ssaoCalc"
 
 void main(){
 	
@@ -527,7 +541,7 @@ void main(){
 	
 	vec4 color= vec4(gb0_color.xyz,1.0);
 	
-	vec3 light= vec3(u_ambient_light);
+	vec3 light= vec3(u_ambient_light)*getFactor(1.0,uv);
 	if(u_useOcclusion)
 		light*=gb2_color.x;
 	

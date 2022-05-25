@@ -264,6 +264,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
+	shader->setUniform("u_use_SSAO", this->useSSAO);
+	if (this->useSSAO)
+		shader->setUniform("u_SSAO_texture", this->ssao_fbo->color_textures[0], 4);
+	
 
 	//pass the inverse projection of the camera to reconstruct world pos.
 	
@@ -324,6 +328,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			}
 			if (i == 0)
 				glDisable(GL_BLEND);
+				
 			else
 			{
 				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
@@ -642,12 +647,6 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 
 	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
-	if (this->pipelineType == ePipeLineType::DEFERRED &&this->useSSAO) {
-		shader->setUniform("u_use_SSAO", true);
-	}
-	else {
-		shader->setUniform("u_use_SSAO", true);
-	}
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 	
 	
@@ -733,6 +732,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 			if (i > 0) {
 				shader->setUniform("u_ambient_light", Vector3());
 				shader->setFloat("u_emissive_factor", 0.0f);
+				
 			}
 			shader->setUniform("light_index", i);
 			
