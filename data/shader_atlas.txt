@@ -9,6 +9,7 @@ deferred quad.vs deferred.fs
 deferred_opti basic.vs deferred.fs
 depth quad.vs depth.fs
 multi basic.vs multi.fs
+ssao quad.vs ssaoFrag.fs;
 
 \constants
 #define PI 3.14159

@@ -48,6 +48,8 @@ bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
 GTR::Renderer::Renderer()
 {
 	this->shadowMapAtlas = new shadowAtlas();
+	//Generate random points
+	generateSpherePoints(64, 1, false);
 }
 
 void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
@@ -133,6 +135,35 @@ void GTR::Renderer::RenderForward(Camera* camera, GTR::Scene* scene)
 	}
 }
 
+void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Mesh* quad) {
+	// start rendering inside the ssao texture
+		ssao_fbo->bind();
+
+	//get the shader for SSAO (remember to create it using the atlas)
+	Shader* shader = Shader::Get("ssao");
+	shader->enable();
+
+	//send info to reconstruct the world position
+	shader->setUniform("u_inverse_viewprojection", invVP);
+	shader->setTexture("u_depth_texture", gbuffers_fbo->depth_texture, 0);
+	//we need the pixel size so we can center the samples 
+	shader->setUniform("u_iRes", Vector2(1.0 / (float)gbuffers_fbo->depth_texture->width,
+		1.0 / (float)gbuffers_fbo->depth_texture->height));
+	//we will need the viewprojection to obtain the uv in the depthtexture of any random position of our world
+	shader->setUniform("u_viewprojection", cam->viewprojection_matrix);
+
+	//send random points so we can fetch around
+	shader->setUniform3Array("u_points", (float*)&randomPoints[0],
+		randomPoints.size());
+
+	//render fullscreen quad
+	quad->render(GL_TRIANGLES);
+
+	//stop rendering to the texture
+	ssao_fbo->unbind();
+
+}
+
 void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 {
 	//Render GBuffer
@@ -143,6 +174,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	if (!this->gbuffers_fbo) {
 		gbuffers_fbo= new FBO();
 		illumination_fbo= new FBO();
+		ssao_fbo = new FBO();
+		ssao_blur = new Texture();
 		
 		gbuffers_fbo->create(width,height,
 			3, 			//three textures
@@ -155,7 +188,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_RGB,				//three channels
 			GL_FLOAT, //1 byte
 			true);				//add depth_texture
-
+		
+		ssao_fbo->create(width,height);
+		ssao_blur->create(width, height);
+		
 	}
 		
 	gbuffers_fbo->bind();
@@ -171,17 +207,22 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
 		if (camera->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
 			renderMeshWithMaterialToGBuffers(rc.model, rc.mesh, rc.material, camera);
-
 	}
 	gbuffers_fbo->unbind();
+	
+	
+	Matrix44 inv_vp = camera->viewprojection_matrix;
+	Mesh* quad = Mesh::getQuad();
+	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
+	renderSSAO(camera, scene,inv_vp,quad);
+
+	
 	//render to screen
 	illumination_fbo->bind();
 	glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-	Mesh* quad = Mesh::getQuad();
-	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
 	
 	
 	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
@@ -198,7 +239,6 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 
 	//pass the inverse projection of the camera to reconstruct world pos.
-	Matrix44 inv_vp = camera->viewprojection_matrix;
 	inv_vp.inverse();
 	shader->setUniform("u_inverse_viewprojection", inv_vp);
 	//pass the inverse window resolution, this may be useful
@@ -681,6 +721,32 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 
 
 
+
+std::vector<Vector3> GTR::generateSpherePoints(int num, float radius, bool hemi)
+{
+		std::vector<Vector3> points;
+		points.resize(num);
+		for (int i = 0; i < num; i += 3)
+		{
+			Vector3& p = points[i];
+			float u = random();
+			float v = random();
+			float theta = u * 2.0 * PI;
+			float phi = acos(2.0 * v - 1.0);
+			float r = cbrt(random() * 0.9 + 0.1) * radius;
+			float sinTheta = sin(theta);
+			float cosTheta = cos(theta);
+			float sinPhi = sin(phi);
+			float cosPhi = cos(phi);
+			p.x = r * sinPhi * cosTheta;
+			p.y = r * sinPhi * sinTheta;
+			p.z = r * cosPhi;
+			if (hemi && p.z < 0)
+				p.z *= -1.0;
+		}
+		return points;
+	
+}
 
 Texture* GTR::CubemapFromHDRE(const char* filename)
 {

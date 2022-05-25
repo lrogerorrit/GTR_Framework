@@ -37,6 +37,8 @@ namespace GTR {
 	private:
 		std::vector<RenderCall> render_calls;
 		std::vector<GTR::LightEntity*> lights;
+
+		std::vector<Vector3> randomPoints;
 		
 		
 	public:
@@ -56,6 +58,10 @@ namespace GTR {
 
 		FBO* gbuffers_fbo= NULL;
 		FBO* illumination_fbo= NULL;
+		FBO* ssao_fbo= NULL;
+		Texture* ssao_blur = NULL;
+		
+		
 		
 		
 
@@ -68,6 +74,7 @@ namespace GTR {
 		void renderScene(GTR::Scene* scene, Camera* camera);
 
 		void RenderForward(Camera* camera, GTR::Scene* scene);
+		void renderSSAO(Camera* cam, GTR::Scene* scene, Matrix44& invVP, Mesh* quad);
 		void RenderDeferred(Camera* camera, GTR::Scene* scene);
 		
 	
@@ -83,7 +90,11 @@ namespace GTR {
 		void renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
 
 		
+
+		
 	};
+	std::vector<Vector3> generateSpherePoints(int num, float radius, bool hemi);
+		
 
 	Texture* CubemapFromHDRE(const char* filename);
 
