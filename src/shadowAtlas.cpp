@@ -163,7 +163,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 	glColorMask(0, 0, 0, 0);
 	glClear(GL_DEPTH_BUFFER_BIT);
 	Shader* shader = Shader::Get("flat");
-	
+	int i_pos = 0;
 	for (shadowData& data : this->dataArray){
 		LightEntity* light = data.light;
 		
@@ -175,13 +175,26 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 			light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
 
 			light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - (light->lightDirection * 20), Vector3(0, 1, 0));
+			float grid = (light->area_size) / (float)getTileSize(i_pos); //TODO Fix?
 
+		//snap camera X,Y to that size in camera space assuming the frustum is square, otherwise compute gridxand gridy
+			light->shadow_cam->view_matrix.M[3][0] = round(light->shadow_cam->view_matrix.M[3][0] / grid) * grid;
+
+			light->shadow_cam->view_matrix.M[3][1] = round(light->shadow_cam->view_matrix.M[3][1] / grid) * grid;
+
+		//update viewproj matrix (be sure no one changes it)
+			light->shadow_cam->viewprojection_matrix = light->shadow_cam->view_matrix * light->shadow_cam->projection_matrix;
 			//light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() + light->lightDirection, Vector3(0, -1, 0));
 		}
 		else if (light->light_type == eLightType::SPOT) {
 			light->shadow_cam->setPerspective(light->cone_angle*2, 1.0, 0.1, light->max_distance);
 			light->shadow_cam->lookAt(light->model.getTranslation(), light->model * Vector3(0, 0, -1), light->model.rotateVector(Vector3(0, 1, 0)));
 		}
+
+		//compute texel size in world units, where frustum size is the distance from left to right in the camera
+		
+
+		
 		light->shadow_cam->enable();
 
 		for (RenderCall& rc : renderCalls){
@@ -191,6 +204,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 				renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam,Vector3(data.pos,data.shadowDimensions));
 		};
 		light->has_shadow_map = true;
+		i_pos++;
 	};
 	shader->disable();
 	//change viewport to original
