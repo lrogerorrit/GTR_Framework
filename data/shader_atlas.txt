@@ -12,8 +12,25 @@ multi basic.vs multi.fs
 ssao quad.vs ssaoFrag.fs
 ssaoBlur quad.vs ssaoBlur.fs
 
+
 \constants
 #define PI 3.14159
+
+\hdr
+
+uniform bool useHDR;
+
+vec3 degamma(vec3 c)
+{
+	return pow(c,vec3(2.2));
+}
+
+vec3 gamma(vec3 c)
+{
+	return pow(c,vec3(1.0/2.2));
+}
+
+
 
 \mapFunction
 int map(int x, int in_min, int in_max, int out_min, int out_max){
@@ -497,6 +514,7 @@ layout (location=1) out vec4 GB1;
 layout (location=2) out vec4 GB2;
 
 #include "normals"
+#include "hdr"
 
 void main()
 {
@@ -510,8 +528,12 @@ void main()
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	color *= texture( u_texture, v_uv );
-	
 	vec3 emmisiveCol= texture(u_emissive_texture,v_uv).xyz*u_emissive_factor;
+	if (useHDR){
+		color.xyz= degamma(color.xyz);
+		emmisiveCol= degamma(emmisiveCol.xyz);
+	}
+	
 	vec3 MRT_texture= texture(u_metallic_roughness_texture,v_uv).xyz;
 	
 	
@@ -576,6 +598,7 @@ out vec4 FragColor;
 #include "normals"
 #include "pbr"
 #include "ssaoCalc"
+#include "hdr"
 
 void main(){
 	
@@ -590,14 +613,15 @@ void main(){
 	vec4 gb1_color= texture(u_gb1_texture,uv); //Normal
 	vec4 gb2_color= texture(u_gb2_texture,uv); //MRT
 	vec3 emmisiveCol= vec3(gb0_color.w,gb1_color.w,gb2_color.w);
-	
+	/*if (useHDR){
+		emmisiveCol= degamma(emmisiveCol);
+		gb0_color.xyz= degamma(gb0_color.xyz);
+	}*/
 	
 	float depth= texture(u_depth_texture,uv).x;
 	vec4 screen_pos= vec4(uv.x*2.0-1.0,uv.y*2.0-1.0,depth*2.0-1.0,1.0);
 	vec4 proj_worldpos= u_inverse_viewprojection*screen_pos;
 	vec3 world_position= proj_worldpos.xyz/proj_worldpos.w;
-	
-	
 	
 
 	vec3 N= normalize(gb1_color.xyz*2.0-vec3(1.0));
@@ -642,13 +666,15 @@ void main(){
 	if (u_light_cast_shadows==true)
 		shadowFactor= getShadowAttenuation(world_position,u_light_shadowmap_vp,u_shadow_bias,shadowAtlasTexture,u_light_type==2,true,light_index);
 	
-	pointData pData= makePointData(N,L,V,u_light_color,gb2_color.y,gb2_color.z);
+	pointData pData= makePointData(N,L,V,(useHDR?degamma(u_light_color):u_light_color),gb2_color.y,gb2_color.z);
 	NdotL= max(dot(L,N),0.0);
 	//light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	float multipliers=(attFactor*spotFactor*shadowFactor);
 			light+= getPBRColor(pData)*multipliers;
 	light+= emmisiveCol;
 	color.xyz*= light;
+	if (useHDR)
+		color.xyz= gamma(color.xyz);
 	//color.xyz+=//u_emissive_factor;
 	FragColor = color;
 }

@@ -204,6 +204,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		gbuffers_fbo= new FBO();
 		illumination_fbo= new FBO();
 		ssao_fbo = new FBO();
+		tonemapper_fbo = new FBO();
 		
 		
 		gbuffers_fbo->create(width,height,
@@ -223,7 +224,11 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_LUMINANCE,
 			GL_FLOAT,
 			false);
-		
+		tonemapper_fbo->create(width, height,
+			1,
+			GL_RGBA,
+			GL_FLOAT,
+			false);
 		
 	}
 	//bind the texture we want to change
@@ -283,6 +288,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("u_use_SSAO", this->useSSAO);
+	shader->setUniform("useHDR", this->useHDR);
 	if (this->useSSAO)
 		shader->setUniform("u_SSAO_texture",(this->useSSAOBlur)? this->ssao_fbo->color_textures[1]:this->ssao_fbo->color_textures[0], 4);
 	
@@ -333,6 +339,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 					shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 					shader->setUniform("u_camera_position", camera->eye);
 					shader->setUniform("u_inverse_viewprojection", inv_vp);
+					shader->setUniform("useHDR", this->useHDR);
 					//pass the inverse window resolution, this may be useful
 					shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 					this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
@@ -512,7 +519,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);
 	shader->setUniform("u_model", model);
-
+	shader->setUniform("useHDR", this->useHDR);
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
