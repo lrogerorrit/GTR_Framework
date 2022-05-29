@@ -50,11 +50,16 @@ namespace GTR {
 		bool useSSAO = true;
 		bool useSSAOBlur = false;
 		bool useHDR = false;
+		bool useTonemapper = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
 		bool showSSAO = false;
 		bool isOptimizedDeferred = true;
+
+		
+		float exposure = 1.0f;
+		
 		
 		
 		int multiLightType = (int) eMultiLightType::SINGLE_PASS;

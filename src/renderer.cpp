@@ -366,7 +366,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			m.scale(light->max_distance, light->max_distance, light->max_distance);
 
 			shader->setUniform("u_model", m);
-
+			shader->setUniform("convertToGamma", (!this->useTonemapper) &&this->useHDR);
 			
 			uploadSingleLightToShader(shader, light);
 			shader->setUniform("light_index", i);
@@ -387,9 +387,29 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	illumination_fbo->unbind();
 	glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
-	illumination_fbo->color_textures[0]->toViewport();
 	//Apply multipass reading to gbuffers
 
+	if (useTonemapper && useHDR) {
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		Shader* shaderT = Shader::Get("tonemapper");
+		glDisable(GL_DEPTH_TEST);
+		tonemapper_fbo->bind();
+		shaderT->enable();
+		
+
+		shaderT->setUniform("u_texture", this->illumination_fbo->color_textures[0], 0);
+		shaderT->setUniform("exposure", this->exposure);
+
+		quad->render(GL_TRIANGLES);
+		
+		
+		shaderT->disable();
+		tonemapper_fbo->unbind();
+		glEnable(GL_DEPTH_TEST);
+		tonemapper_fbo->color_textures[0]->toViewport();
+	}
+	else
+		illumination_fbo->color_textures[0]->toViewport();
 
 	if (showGBuffers) {
 		glViewport(0, height * .5, width * .5, height * .5);

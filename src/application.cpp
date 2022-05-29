@@ -319,6 +319,12 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use SSAO Blur", &renderer->useSSAOBlur);
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 		ImGui::Checkbox("Use HDR", &renderer->useHDR);
+		if (renderer->useHDR)
+			ImGui::Checkbox("Use Tonemapper", &renderer->useTonemapper);
+		if (renderer->useTonemapper) {
+			ImGui::DragFloat("Exposure", &renderer->exposure,.01f,0.0f,10.0f);
+			
+		}
 	}
 
 		

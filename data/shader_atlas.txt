@@ -11,6 +11,7 @@ depth quad.vs depth.fs
 multi basic.vs multi.fs
 ssao quad.vs ssaoFrag.fs
 ssaoBlur quad.vs ssaoBlur.fs
+tonemapper quad.vs tonemapping.fs
 
 
 \constants
@@ -482,6 +483,35 @@ void main(){
 
 }
 
+\tonemapping.fs
+#version 330 core
+
+#include "hdr"
+
+in vec2 v_uv;
+
+uniform sampler2D u_texture;
+uniform float exposure;
+
+
+layout(location=0) out vec4 FragColor;
+
+void main()
+{
+                   
+    
+    vec4 rgba= texture(u_texture, v_uv);
+	vec3 rgb= rgba.xyz;
+
+    //  Exposure tone mapping 
+    vec3 mapped = vec3(1.0) - exp(-rgb * exposure);
+    // Gamma correction  
+    mapped = gamma(mapped);
+
+    FragColor = vec4(mapped, rgba.w);
+} 
+
+
 
 \gbuffers.fs 
 
@@ -585,6 +615,8 @@ uniform int light_index;
 
 uniform bool u_inClipSpace;
 uniform bool u_useOcclusion;
+
+uniform bool convertToGamma;
 //uniform float occlusionFactor;
 
 
@@ -673,7 +705,7 @@ void main(){
 			light+= getPBRColor(pData)*multipliers;
 	light+= emmisiveCol;
 	color.xyz*= light;
-	if (useHDR)
+	if (convertToGamma)
 		color.xyz= gamma(color.xyz);
 	//color.xyz+=//u_emissive_factor;
 	FragColor = color;
