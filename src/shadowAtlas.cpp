@@ -175,7 +175,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 			light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
 
 			light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - (light->lightDirection * 20), Vector3(0, 1, 0));
-			float grid = (light->area_size) / (float)getTileSize(i_pos); //TODO Fix?
+			float grid = (float) (light->area_size) / (float) getTileSize(i_pos);
 
 		//snap camera X,Y to that size in camera space assuming the frustum is square, otherwise compute gridxand gridy
 			light->shadow_cam->view_matrix.M[3][0] = round(light->shadow_cam->view_matrix.M[3][0] / grid) * grid;
@@ -195,6 +195,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 		
 
 		
+		i_pos++;
 		light->shadow_cam->enable();
 
 		for (RenderCall& rc : renderCalls){
@@ -204,7 +205,6 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 				renderFlatMesh(rc.model, rc.mesh, rc.material, light->shadow_cam,Vector3(data.pos,data.shadowDimensions));
 		};
 		light->has_shadow_map = true;
-		i_pos++;
 	};
 	shader->disable();
 	//change viewport to original

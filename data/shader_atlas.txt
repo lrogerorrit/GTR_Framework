@@ -207,6 +207,7 @@ pointData makePointData(vec3 N, vec3 L, vec3 V, vec3 col, float metal, float rou
 
 \pbr
 #include "pointdata"
+uniform bool usePBR;
 
 
 float walter_GGX(pointData data){
@@ -709,9 +710,12 @@ void main(){
 	
 	pointData pData= makePointData(N,L,V,(useHDR?degamma(u_light_color):u_light_color),gb2_color.y,gb2_color.z);
 	NdotL= max(dot(L,N),0.0);
-	//light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	
 	float multipliers=(attFactor*spotFactor*shadowFactor);
-			light+= getPBRColor(pData)*multipliers;
+	if (usePBR)
+		light+= getPBRColor(pData)*multipliers;
+	else
+		light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	light+= emmisiveCol;
 	color.xyz*= light;
 	if (convertToGamma)
@@ -835,8 +839,10 @@ void main()
 			
 			
 			float multipliers=(attFactor*spotFactor*shadowFactor);
-			light+= getPBRColor(pData)*multipliers;
-			//light+= (NdotL*u_light_color[i])*multipliers;
+			if (usePBR)
+				light+= getPBRColor(pData)*multipliers;
+			else
+				light+= (NdotL*u_light_color[i])*multipliers;
 			
 		}
 		
@@ -947,9 +953,10 @@ void main()
 	pointData pData= makePointData(N,L,V,u_light_color,metallicFactor,roughnessFactor);
 	
 	float multipliers= attFactor*spotFactor*shadowFactor;
-	
-	light+= getPBRColor(pData)*multipliers;
-	//light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
+	if (usePBR)
+		light+= getPBRColor(pData)*multipliers;
+	else
+		light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	
 	color.xyz*= light;
 	if(light_index==0)

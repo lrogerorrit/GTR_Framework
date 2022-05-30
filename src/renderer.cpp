@@ -298,6 +298,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("u_use_SSAO", this->useSSAO);
 	shader->setUniform("useHDR", this->useHDR);
+	shader->setUniform("usePBR", usePBR);
 	if (this->useSSAO)
 		shader->setUniform("u_SSAO_texture",(this->useSSAOBlur)? this->ssao_fbo->color_textures[1]:this->ssao_fbo->color_textures[0], 4);
 	
@@ -349,6 +350,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 					shader->setUniform("u_camera_position", camera->eye);
 					shader->setUniform("u_inverse_viewprojection", inv_vp);
 					shader->setUniform("useHDR", this->useHDR);
+					shader->setUniform("usePBR", usePBR);
 					//pass the inverse window resolution, this may be useful
 					shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 					this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
@@ -569,6 +571,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
+	shader->setUniform("usePBR", usePBR);
 	
 	float t = getTime();
 	shader->setUniform("u_time", t);
@@ -616,6 +619,7 @@ void GTR::Renderer::uploadSingleLightToShader(Shader* shader, GTR::LightEntity* 
 	shader->setUniform("u_spotCosineCuttof", 0.0f);
 	shader->setUniform("u_cone_angle", 0.0f);
 	shader->setUniform("u_light_cast_shadows", false);
+	shader->setUniform("usePBR", usePBR);
 	if (light->light_type == eLightType::SPOT) {
 		shader->setUniform("u_cone_angle", light->cone_angle);
 		shader->setUniform("u_cone_exp", light->cone_exp);
@@ -707,6 +711,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	shader->setFloat("u_emissive_factor", this->useEmissive?1.0:0.0 );
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
+	shader->setUniform("usePBR", usePBR);
 	float t = getTime();
 	shader->setUniform("u_time", t );
 
@@ -789,6 +794,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 		shader->setMatrix44Array("u_shadow_map_vp", (Matrix44*)&light_shadowmap_vp, num_lights);
 		shader->setUniform1Array("u_shadowBias", (float*)&shadowBias, num_lights);
 		shader->setUniform1("u_num_lights", num_lights);
+		shader->setUniform("usePBR", usePBR);
 		this->shadowMapAtlas->uploadDataToShader(shader,this->lights);
 		mesh->render(GL_TRIANGLES);
 		shader->disable();

@@ -23,23 +23,38 @@
 			"name":"car2",
 			"type":"PREFAB",
 			"filename":"prefabs/gmc/scene.gltf",
-			"position":[-50,0,233],
-			"angle":200
+			"position":[-80,0,233],
+			"angle":100
 		},
 		{
-			"name":"house",
+			"name":"car3",
 			"type":"PREFAB",
-			"filename":"prefabs/house_test/scene.gltf",
+			"filename":"prefabs/gmc/scene.gltf",
 			"position":[300,0,200],
-			"scale":[0.4,0.4,0.4]
+			"angle":130
+		},
+		{
+			"name":"car4",
+			"type":"PREFAB",
+			"filename":"prefabs/gmc/scene.gltf",
+			"position":[300,0,-200],
+			"angle":10
+		},
+		{
+			"name":"car5",
+			"type":"PREFAB",
+			"filename":"prefabs/gmc/scene.gltf",
+			"position":[-10,0,200],
+			"angle":90
 		},
 		{
 			"name":"house",
 			"type":"PREFAB",
 			"filename":"prefabs/house_test/scene.gltf",
-			"position":[300,0,-200],
+			"position":[-500,0,200],
 			"scale":[0.4,0.4,0.4]
 		},
+		
 		{
 			"name":"trash",
 			"type":"PREFAB",
@@ -100,7 +115,6 @@
 			"max_dist":1000,
 			"cast_shadows": true,
 			"shadow_bias": 0.01,
-			"shadow_bias": -0.001,
 			"light_type":"DIRECTIONAL"
 		}
 	]
