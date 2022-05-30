@@ -398,7 +398,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		
 
 		shaderT->setUniform("u_texture", this->illumination_fbo->color_textures[0], 0);
-		shaderT->setUniform("exposure", this->exposure);
+		shaderT->setUniform("u_scale", this->u_scale);
+		shaderT->setUniform("u_average_lum", this->u_average_lum);
+		shaderT->setUniform("u_lumwhite2", this->u_lumwhite2);
 
 		quad->render(GL_TRIANGLES);
 		

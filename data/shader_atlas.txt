@@ -486,29 +486,35 @@ void main(){
 \tonemapping.fs
 #version 330 core
 
-#include "hdr"
 
 in vec2 v_uv;
 
 uniform sampler2D u_texture;
-uniform float exposure;
-
+uniform float u_scale; //color scale before tonemapper
+uniform float u_average_lum; 
+uniform float u_lumwhite2;
+uniform float u_igamma; //inverse gamma
 
 layout(location=0) out vec4 FragColor;
+
+#include "hdr"
 
 void main()
 {
                    
     
-    vec4 rgba= texture(u_texture, v_uv);
-	vec3 rgb= rgba.xyz;
+    vec4 color= texture(u_texture, v_uv);
+	vec3 rgb= color.xyz;
 
-    //  Exposure tone mapping 
-    vec3 mapped = vec3(1.0) - exp(-rgb * exposure);
-    // Gamma correction  
-    mapped = gamma(mapped);
+    float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+	float L = (u_scale / u_average_lum) * lum;
+	float Ld = (L * (1.0 + L / u_lumwhite2)) / (1.0 + L);
+	
+	rgb= (rgb/lum)*Ld;
+	rgb= gamma(max(rgb,vec3(.001)));
+	
 
-    FragColor = vec4(mapped, rgba.w);
+    FragColor = vec4(rgb, color.w);
 } 
 
 

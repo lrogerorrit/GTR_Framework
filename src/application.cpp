@@ -322,7 +322,9 @@ void Application::renderDebugGUI(void)
 		if (renderer->useHDR)
 			ImGui::Checkbox("Use Tonemapper", &renderer->useTonemapper);
 		if (renderer->useTonemapper) {
-			ImGui::DragFloat("Exposure", &renderer->exposure,.01f,0.0f,10.0f);
+			ImGui::SliderFloat("Scale", &renderer->u_scale,0.0f,10.0f);
+			ImGui::SliderFloat("Average lum", &renderer->u_average_lum,0.0f,10.0f);
+			ImGui::SliderFloat("lumwhite2", &renderer->u_lumwhite2,0.0f,10.0f);
 			
 		}
 	}

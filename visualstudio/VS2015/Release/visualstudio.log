@@ -1,47 +1,19 @@
-﻿  renderer.cpp
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(104,1): warning C4099: 'cJSON': nombre de tipo visto anteriormente usando 'class' ahora se ve usando 'struct'
+﻿  application.cpp
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\scene.h(10,12): warning C4099: 'cJSON': nombre de tipo visto anteriormente usando 'struct' ahora se ve usando 'class'
 C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\extra\cJSON.h(103): message : vea la declaración de 'cJSON'
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(24,13): warning C4244: 'return': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(65,20): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(95,20): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(131,20): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(163,7): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(162,43): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(186,8): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(185,45): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(254,20): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(287,44): warning C4244: 'argumento': conversión de 'double' a 'const float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(300,63): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(300,43): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(318,21): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(344,67): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(344,47): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(415,49): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(415,36): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(415,24): warning C4244: 'argumento': conversión de 'double' a 'GLint'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(417,56): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(417,43): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(417,31): warning C4244: 'argumento': conversión de 'double' a 'GLint'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(417,19): warning C4244: 'argumento': conversión de 'double' a 'GLint'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(419,39): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(419,26): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(421,45): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(421,32): warning C4244: 'argumento': conversión de 'double' a 'GLsizei'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(421,19): warning C4244: 'argumento': conversión de 'double' a 'GLint'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(482,20): warning C4018: '<': no coinciden signed/unsigned
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(543,44): warning C4244: 'argumento': conversión de 'double' a 'const float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(547,10): warning C4244: 'inicializando': conversión de 'long' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(678,44): warning C4244: 'argumento': conversión de 'double' a 'const float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(681,10): warning C4244: 'inicializando': conversión de 'long' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(819,16): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(820,14): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
-C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\renderer.cpp(821,12): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(163,14): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(164,20): warning C4244: 'inicializando': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(180,55): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(182,55): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(349,20): warning C4018: '<': no coinciden signed/unsigned
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(445,19): warning C4244: '*=': conversión de 'double' a 'float'; posible pérdida de datos
+C:\Users\roger\Documents\3r\T3\gtr\framework\GTR_Framework\src\application.cpp(447,35): warning C4244: 'argumento': conversión de 'double' a 'float'; posible pérdida de datos
      Creando biblioteca ..\..\framework.lib y objeto ..\..\framework.exp
 LINK : warning LNK4098: la biblioteca predeterminada'LIBCMT' entra en conflicto con otras bibliotecas; use la biblioteca /NODEFAULTLIB:biblioteca
   Generando código
-  1 of 4685 functions (<0.1%) were compiled, the rest were copied from previous compilation.
+  18 of 4685 functions ( 0.4%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    53 functions had inline decision re-evaluated but remain unchanged
+    61 functions had inline decision re-evaluated but remain unchanged
   Generación de código finalizada
 LINK : warning LNK4286: "___glewDeleteBuffers" importa el símbolo "glew32s.lib(glew.obj)" definido en "imgui_impl_opengl3.obj"
 LINK : warning LNK4286: "___glewLinkProgram" importa el símbolo "glew32s.lib(glew.obj)" definido en "imgui_impl_opengl3.obj"

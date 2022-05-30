@@ -58,7 +58,9 @@ namespace GTR {
 		bool isOptimizedDeferred = true;
 
 		
-		float exposure = 1.0f;
+		float u_scale = 1.0f;
+		float u_average_lum = 1.0f;
+		float u_lumwhite2 = 1.0f;
 		
 		
 		
