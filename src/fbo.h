@@ -29,6 +29,7 @@ public:
 	bool setTextures(std::vector<Texture*> textures, Texture* depth = NULL, int cubemap_face = -1);
 	bool setDepthOnly(int width, int height); //use this for shadowmaps
 	
+	
 	void bind();
 	void unbind();
 

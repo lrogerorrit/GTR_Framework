@@ -514,10 +514,8 @@ void main()
 	rgb= gamma(max(rgb,vec3(.001)));
 	
 
-    gl_FragColor = vec4(rgb, color.w);
+    FragColor = vec4(rgb, color.w);
 } 
-
-
 
 \gbuffers.fs 
 
@@ -581,6 +579,8 @@ void main()
 	GB1= vec4(N*.5+vec3(0.5),emmisiveCol.y);
 	GB2= vec4(MRT_texture,emmisiveCol.z);
 }
+
+
 
 
 

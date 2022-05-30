@@ -205,6 +205,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		illumination_fbo= new FBO();
 		ssao_fbo = new FBO();
 		tonemapper_fbo = new FBO();
+		deferred_alpha_fbo = new FBO();
 		
 		
 		gbuffers_fbo->create(width,height,
@@ -226,10 +227,14 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			false);
 		tonemapper_fbo->create(width, height,
 			1,
-			GL_RGBA,
+			GL_RGB,
 			GL_FLOAT,
 			false);
-		
+		deferred_alpha_fbo->create(width, height,
+			1,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			true);
 	}
 	//bind the texture we want to change
 	gbuffers_fbo->depth_texture->bind();
@@ -249,13 +254,17 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	
+	std::vector<RenderCall*> alphaNodes;
+	alphaNodes.clear();
 	//Render every object with a gbuffer shader
 	for (int i = 0; i < this->render_calls.size(); ++i) {
 		RenderCall& rc = this->render_calls[i];
 		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
 		if (camera->testBoxInFrustum(rc.boundingBox.center, rc.boundingBox.halfsize))
-			renderMeshWithMaterialToGBuffers(rc.model, rc.mesh, rc.material, camera);
+			if (rc.material->alpha_mode == eAlphaMode::BLEND)
+				alphaNodes.push_back(&rc);
+			else
+				renderMeshWithMaterialToGBuffers(rc.model, rc.mesh, rc.material, camera);
 	}
 	gbuffers_fbo->unbind();
 	
@@ -389,6 +398,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	glDisable(GL_CULL_FACE);
 	//Apply multipass reading to gbuffers
 
+	//Forward alpha render
+	
+
 	if (useTonemapper && useHDR) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		Shader* shaderT = Shader::Get("tonemapper");
@@ -412,6 +424,18 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	}
 	else
 		illumination_fbo->color_textures[0]->toViewport();
+	
+	
+	gbuffers_fbo->depth_texture->copyTo(0);
+	glEnable(GL_DEPTH_TEST);
+	
+	for (int i = 0; i < alphaNodes.size(); ++i) {
+		RenderCall* rc = alphaNodes[i];
+		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
+		renderMeshWithMaterialAndLighting(rc->model, rc->mesh, rc->material, camera);
+	}
+	
+	
 
 	if (showGBuffers) {
 		glViewport(0, height * .5, width * .5, height * .5);
@@ -605,6 +629,9 @@ void GTR::Renderer::uploadSingleLightToShader(Shader* shader, GTR::LightEntity* 
 	}
 }
 
+
+
+
 //renders a mesh given its transform and material
 void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera)
 {
@@ -670,7 +697,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	if (!shader)
 		return;
 	shader->enable();
-
+	
 	//upload uniforms
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);

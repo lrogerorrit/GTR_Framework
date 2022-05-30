@@ -71,6 +71,7 @@ namespace GTR {
 		FBO* illumination_fbo= NULL;
 		FBO* ssao_fbo= NULL;
 		FBO* tonemapper_fbo= NULL;
+		FBO* deferred_alpha_fbo = NULL;
 		
 		
 		
@@ -96,10 +97,13 @@ namespace GTR {
 		//to render one node from the prefab and its children
 		void renderNode(const Matrix44& model, GTR::Node* node, Camera* camera);
 
+
 		//to render one mesh given its material and transformation matrix
 		void renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
 		void uploadSingleLightToShader(Shader* shader, GTR::LightEntity* light);
+		
 		void renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
+		
 
 		
 

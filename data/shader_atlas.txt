@@ -519,6 +519,7 @@ void main()
 
 
 
+
 \gbuffers.fs 
 
 #version 330 core
@@ -581,6 +582,8 @@ void main()
 	GB1= vec4(N*.5+vec3(0.5),emmisiveCol.y);
 	GB2= vec4(MRT_texture,emmisiveCol.z);
 }
+
+
 
 
 
