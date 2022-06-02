@@ -1,8 +1,19 @@
 #pragma once
 #include "prefab.h"
+#include "sphericalharmonics.h"
+
 
 //forward declarations
 class Camera;
+
+
+
+struct sProbe {
+	Vector3 pos; //where is located
+	Vector3 local; //its ijk pos in the matrix
+	int index; //its index in the linear array
+	SphericalHarmonics sh; //coeffs
+};
 
 namespace GTR {
 	class shadowAtlas;
@@ -39,6 +50,7 @@ namespace GTR {
 		std::vector<GTR::LightEntity*> lights;
 
 		std::vector<Vector3> randomPoints;
+		std::vector<sProbe> irrProbes;
 		
 		
 	public:
@@ -72,9 +84,11 @@ namespace GTR {
 		FBO* illumination_fbo= NULL;
 		FBO* ssao_fbo= NULL;
 		FBO* tonemapper_fbo= NULL;
-		FBO* deferred_alpha_fbo = NULL;
+		FBO* deferred_alpha_fbo = NULL; //TODO: Remove
+		FBO* irradiance_fbo = NULL;
+		Texture* irr_probe_texture = NULL;
 		
-		
+		Vector3 irr_probe_dim;
 		
 		
 		
@@ -104,6 +118,20 @@ namespace GTR {
 		void uploadSingleLightToShader(Shader* shader, GTR::LightEntity* light);
 		
 		void renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
+
+		void renderProbe(Vector3 pos, float size, float* coeffs);
+
+		void CalculateProbe(sProbe& probe, Camera* cam, Scene* scene);
+
+		void CreateIrradianceGrid();
+
+		void CalculateAllProbes(Scene* scene);
+
+		void StoreProbesToTexture();
+
+		
+
+		
 		
 
 		

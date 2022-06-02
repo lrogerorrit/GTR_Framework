@@ -50,6 +50,7 @@ GTR::Renderer::Renderer()
 	this->shadowMapAtlas = new shadowAtlas();
 	//Generate random points
 	generateSpherePoints(64, 1, false);
+	
 }
 
 void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
@@ -135,6 +136,151 @@ void GTR::Renderer::RenderForward(Camera* camera, GTR::Scene* scene)
 			renderMeshWithMaterialAndLighting(rc.model, rc.mesh, rc.material, camera);
 
 	}
+}
+
+
+
+void Renderer::renderProbe(Vector3 pos, float size, float* coeffs)
+{
+	Camera* camera = Camera::current;
+	Shader* shader = Shader::Get("probe");
+	Mesh* mesh = Mesh::Get("data/meshes/sphere.obj");
+
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+
+	Matrix44 model;
+	model.setTranslation(pos.x, pos.y, pos.z);
+	model.scale(size, size, size);
+
+	shader->enable();
+	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+	shader->setUniform("u_camera_position", camera->eye);
+	shader->setUniform("u_model", model);
+	shader->setUniform3Array("u_coeffs", coeffs, 9);
+
+	mesh->render(GL_TRIANGLES);
+}
+
+void Renderer::CalculateProbe(sProbe& probe,Camera* cam,Scene* scene) {
+	FloatImage images[6]; //here we will store the six views
+
+	//set the fov to 90 and the aspect to 1
+	cam->setPerspective(90, 1, 0.1, 1000);
+
+	if (!this->irradiance_fbo) {
+		this->irradiance_fbo = new FBO();
+		this->irradiance_fbo->create(
+			64,
+			64,
+			1,
+			GL_RGBA, //CAL LA A?
+			GL_UNSIGNED_BYTE,
+			false);
+		
+	}
+	
+	for (int i = 0; i < 6; ++i) //for every cubemap face
+	{
+		//compute camera orientation using defined vectors
+		Vector3 eye = probe.pos;
+		Vector3 front = cubemapFaceNormals[i][2];
+		Vector3 center = probe.pos + front;
+		Vector3 up = cubemapFaceNormals[i][1];
+		cam->lookAt(eye, center, up);
+		cam->enable();
+
+		//render the scene from this point of view
+		irradiance_fbo->bind();
+		this->RenderForward(cam, scene);
+		irradiance_fbo->unbind();
+
+		//read the pixels back and store in a FloatImage
+		images[i].fromTexture(irradiance_fbo->color_textures[0]);
+	}
+	probe.sh = computeSH(images);	
+	delete[] images;
+}
+
+void Renderer::CreateIrradianceGrid() {
+	//when computing the probes position…
+
+	//define the corners of the axis aligned grid
+	//this can be done using the boundings of our scene
+	Vector3 start_pos(-300, 5, -400);
+	Vector3 end_pos(300, 150, 400);
+
+	//define how many probes you want per dimension
+	irr_probe_dim=Vector3(10, 4, 10);
+
+	//compute the vector from one corner to the other
+	Vector3 delta = (end_pos - start_pos);
+
+	//and scale it down according to the subdivisions
+	//we substract one to be sure the last probe is at end pos
+	delta.x /= (irr_probe_dim.x - 1);
+	delta.y /= (irr_probe_dim.y - 1);
+	delta.z /= (irr_probe_dim.z - 1);
+
+	//now delta give us the distance between probes in every axis
+	
+	//lets compute the centers
+	//pay attention at the order at which we add them
+	this->irrProbes.reserve(irr_probe_dim.x * irr_probe_dim.y * irr_probe_dim.z);
+	for (int z = 0; z < irr_probe_dim.z; ++z)
+		for (int y = 0; y < irr_probe_dim.y; ++y)
+			for (int x = 0; x < irr_probe_dim.x; ++x)
+			{
+				sProbe p;
+				p.local.set(x, y, z);
+
+				//index in the linear array
+				p.index = x + y * irr_probe_dim.x + z * irr_probe_dim.x * irr_probe_dim.y;
+
+				//and its position
+				p.pos = start_pos + delta * Vector3(x, y, z);
+				this->irrProbes.push_back(p);
+			}
+}
+
+void Renderer::CalculateAllProbes(Scene* scene) {
+	Camera* probeCam = new Camera();
+	
+	for (int i = 0; i < this->irrProbes.size(); ++i) {
+		sProbe& p = this->irrProbes[i];
+		CalculateProbe(p, probeCam, scene);
+	}	
+}
+
+void Renderer::StoreProbesToTexture() {
+	assert(!this->irrProbes.size() &&"First initialise the probes");
+	//create the texture to store the probes (do this ONCE!!!)
+	irr_probe_texture = new Texture(
+		9, //9 coefficients per probe
+		irrProbes.size(), //as many rows as probes
+		GL_RGB, //3 channels per coefficient
+		GL_FLOAT); //they require a high range
+
+		//we must create the color information for the texture. because every SH are 27 floats in the RGB,RGB,... order, we can create an array of SphericalHarmonics and use it as pixels of the texture
+	SphericalHarmonics* sh_data = NULL;
+	sh_data = new SphericalHarmonics[irr_probe_dim.x * irr_probe_dim.y * irr_probe_dim.z];
+
+	//here we fill the data of the array with our probes in x,y,z order
+	for (int i = 0; i < irrProbes.size(); ++i)
+		sh_data[i] = irrProbes[i].sh;
+
+	//now upload the data to the GPU as a texture
+	irr_probe_texture->upload(GL_RGB, GL_FLOAT, false, (uint8*)sh_data);
+
+	//disable any texture filtering when reading
+	irr_probe_texture->bind();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	//always free memory after allocating it!!!
+	delete[] sh_data;
+
 }
 
 void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Mesh* quad) {
@@ -839,9 +985,6 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 
 
 
-
-
-
 std::vector<Vector3> GTR::generateSpherePoints(int num, float radius, bool hemi)
 {
 		std::vector<Vector3> points;
@@ -867,6 +1010,9 @@ std::vector<Vector3> GTR::generateSpherePoints(int num, float radius, bool hemi)
 		return points;
 	
 }
+
+
+
 
 Texture* GTR::CubemapFromHDRE(const char* filename)
 {
