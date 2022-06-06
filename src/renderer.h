@@ -70,6 +70,8 @@ namespace GTR {
 		bool showSSAO = false;
 		bool isOptimizedDeferred = true;
 
+		bool shouldCalculateProbes = false;
+
 		
 		float u_scale = 1.0f;
 		float u_average_lum = 1.0f;
@@ -128,6 +130,8 @@ namespace GTR {
 		void CalculateAllProbes(Scene* scene);
 
 		void StoreProbesToTexture();
+
+		void CalculateIrradianceProbes(Scene* scene);
 
 		
 

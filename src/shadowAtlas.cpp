@@ -175,12 +175,7 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 			light->shadow_cam->setOrthographic(-light->area_size / 2, light->area_size / 2, light->area_size / 2, -light->area_size / 2, .1, light->max_distance);
 
 			light->shadow_cam->lookAt(light->model.getTranslation(), light->model.getTranslation() - (light->lightDirection * 20), Vector3(0, 1, 0));
-			float grid = (float) (light->area_size) / (float) getTileSize(i_pos);
-
-		//snap camera X,Y to that size in camera space assuming the frustum is square, otherwise compute gridxand gridy
-			light->shadow_cam->view_matrix.M[3][0] = round(light->shadow_cam->view_matrix.M[3][0] / grid) * grid;
-
-			light->shadow_cam->view_matrix.M[3][1] = round(light->shadow_cam->view_matrix.M[3][1] / grid) * grid;
+			
 
 		//update viewproj matrix (be sure no one changes it)
 			light->shadow_cam->viewprojection_matrix = light->shadow_cam->view_matrix * light->shadow_cam->projection_matrix;
@@ -195,8 +190,17 @@ void GTR::shadowAtlas::calculateShadows(std::vector<RenderCall>& renderCalls)
 		
 
 		
-		i_pos++;
 		light->shadow_cam->enable();
+		
+		if (light->light_type == eLightType::DIRECTIONAL) {
+			float grid = (float)(light->area_size) / (float)getTileSize(i_pos);
+
+			//snap camera X,Y to that size in camera space assuming the frustum is square, otherwise compute gridxand gridy
+			light->shadow_cam->view_matrix.M[3][0] = round(light->shadow_cam->view_matrix.M[3][0] / grid) * grid;
+
+			light->shadow_cam->view_matrix.M[3][1] = round(light->shadow_cam->view_matrix.M[3][1] / grid) * grid;
+		}
+		i_pos++;
 
 		for (RenderCall& rc : renderCalls){
 			if (rc.material->alpha_mode == eAlphaMode::BLEND)

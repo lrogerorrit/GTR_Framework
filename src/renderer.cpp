@@ -105,6 +105,11 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 
 	std::sort(this->lights.begin(), this->lights.end(), lightSort);
 	
+	if (shouldCalculateProbes) {
+		this->shouldCalculateProbes = false;
+		this->CalculateIrradianceProbes(scene);
+	}
+	
 	if (pipelineType==ePipeLineType::FORWARD)
 		RenderForward(camera,scene );
 	else
@@ -200,7 +205,7 @@ void Renderer::CalculateProbe(sProbe& probe,Camera* cam,Scene* scene) {
 		images[i].fromTexture(irradiance_fbo->color_textures[0]);
 	}
 	probe.sh = computeSH(images);	
-	delete[] images;
+	
 }
 
 void Renderer::CreateIrradianceGrid() {
@@ -247,14 +252,23 @@ void Renderer::CreateIrradianceGrid() {
 void Renderer::CalculateAllProbes(Scene* scene) {
 	Camera* probeCam = new Camera();
 	
+	if (!this->irrProbes.size()) {
+		CreateIrradianceGrid();
+	}
+
 	for (int i = 0; i < this->irrProbes.size(); ++i) {
 		sProbe& p = this->irrProbes[i];
+		std::cout << "Calculating probe: " << i+1 << "/"<<this->irrProbes.size() << "\r";
 		CalculateProbe(p, probeCam, scene);
-	}	
+		
+	}
+	std::cout << "Calculating probe: DONE             \n";
+	
+	
 }
 
 void Renderer::StoreProbesToTexture() {
-	assert(!this->irrProbes.size() &&"First initialise the probes");
+	
 	//create the texture to store the probes (do this ONCE!!!)
 	irr_probe_texture = new Texture(
 		9, //9 coefficients per probe
@@ -337,6 +351,11 @@ void GTR::Renderer::renderSSAO(Camera* cam, GTR::Scene* scene,Matrix44& invVP,Me
 
 	
 
+}
+
+void Renderer::CalculateIrradianceProbes(Scene* scene) {
+	this->CalculateAllProbes(scene);
+	this->StoreProbesToTexture();
 }
 
 void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)

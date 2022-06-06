@@ -334,6 +334,11 @@ void Application::renderDebugGUI(void)
 	
 	ImGui::ColorEdit3("BG color", scene->background_color.v);
 	ImGui::ColorEdit3("Ambient Light", scene->ambient_light.v);
+	ImGui::Separator();
+	if (ImGui::Button("Calculate Irr Probes")) {
+		renderer->shouldCalculateProbes = true;
+	}
+	
 
 	
 	
