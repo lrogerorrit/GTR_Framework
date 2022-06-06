@@ -64,11 +64,13 @@ namespace GTR {
 		bool useHDR = false;
 		bool useTonemapper = false;
 		bool usePBR = true;
+		bool useIrr = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
 		bool showSSAO = false;
 		bool isOptimizedDeferred = true;
+		bool displayIRRProbes = false;
 
 		bool shouldCalculateProbes = false;
 
@@ -91,6 +93,8 @@ namespace GTR {
 		Texture* irr_probe_texture = NULL;
 		
 		Vector3 irr_probe_dim;
+		Vector3 start_irr;
+		Vector3 end_irr;
 		
 		
 		

@@ -313,6 +313,7 @@ void Application::renderDebugGUI(void)
 	ImGui::Checkbox("Wireframe", &render_wireframe);
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
 	ImGui::Checkbox("Use PBR", &renderer->usePBR);
+	ImGui::Checkbox("Display Probes", &renderer->displayIRRProbes);
 	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
 		ImGui::Checkbox("Show SSAO", &renderer->showSSAO);
@@ -320,6 +321,7 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use SSAO Blur", &renderer->useSSAOBlur);
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 		ImGui::Checkbox("Use HDR", &renderer->useHDR);
+		ImGui::Checkbox("Use IRR", &renderer->useIrr);
 		if (renderer->useHDR)
 			ImGui::Checkbox("Use Tonemapper", &renderer->useTonemapper);
 		if (renderer->useTonemapper) {

@@ -6,6 +6,14 @@
 	"camera_fov":60,
 	"entities":[
 		{
+			"name":"sign",
+			"type":"PREFAB",
+			"filename":"prefabs/sign.glb",
+			"position":[118,48,-400],
+			"angle":120,
+			"scale":[60,60,60]
+		},
+		{
 			"name":"floor",
 			"type":"PREFAB",
 			"filename":"prefabs/road/road.gltf",
@@ -53,14 +61,6 @@
 			"filename":"prefabs/house_test/scene.gltf",
 			"position":[300,20,200],
 			"scale":[0.4,0.4,0.4]
-		},
-		{
-			"name":"sign",
-			"type":"PREFAB",
-			"filename":"prefabs/sign.glb",
-			"position":[118,48,-400],
-			"angle":120,
-			"scale":[60,60,60]
 		},
 		{
 			"name":"house",
@@ -127,7 +127,7 @@
 			"intensity":1.5,
 			"area_size":1500,
 			"max_dist":1000,
-			"shadow_bias": 0.001,
+			"shadow_bias": -0.001,
 			"cast_shadows": true,
 			"light_type":"DIRECTIONAL"
 		}

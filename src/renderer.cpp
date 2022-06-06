@@ -115,7 +115,14 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 	else
 		RenderDeferred(camera,scene);
 	
-	
+	if (displayIRRProbes) {
+		
+		for (int i = 0; i < irrProbes.size(); ++i) {
+			sProbe& data= irrProbes[i];
+			float* coeff = (float*) & data.sh.coeffs[0];
+			renderProbe(data.pos, 5.0, (float*)&data.sh.coeffs);
+		}
+	}
 	
 	
 	
@@ -161,7 +168,7 @@ void Renderer::renderProbe(Vector3 pos, float size, float* coeffs)
 
 	shader->enable();
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
-	shader->setUniform("u_camera_position", camera->eye);
+	shader->setUniform("u_camera_pos", camera->eye);
 	shader->setUniform("u_model", model);
 	shader->setUniform3Array("u_coeffs", coeffs, 9);
 
@@ -180,8 +187,8 @@ void Renderer::CalculateProbe(sProbe& probe,Camera* cam,Scene* scene) {
 			64,
 			64,
 			1,
-			GL_RGBA, //CAL LA A?
-			GL_UNSIGNED_BYTE,
+			GL_RGB, //CAL LA A?
+			GL_FLOAT,
 			false);
 		
 	}
@@ -215,6 +222,8 @@ void Renderer::CreateIrradianceGrid() {
 	//this can be done using the boundings of our scene
 	Vector3 start_pos(-300, 5, -400);
 	Vector3 end_pos(300, 150, 400);
+	start_irr = start_pos;
+	end_irr = end_pos;
 
 	//define how many probes you want per dimension
 	irr_probe_dim=Vector3(10, 4, 10);
@@ -232,6 +241,7 @@ void Renderer::CreateIrradianceGrid() {
 	
 	//lets compute the centers
 	//pay attention at the order at which we add them
+	std::cout << "Creating irr grid\r";
 	this->irrProbes.reserve(irr_probe_dim.x * irr_probe_dim.y * irr_probe_dim.z);
 	for (int z = 0; z < irr_probe_dim.z; ++z)
 		for (int y = 0; y < irr_probe_dim.y; ++y)
@@ -247,6 +257,7 @@ void Renderer::CreateIrradianceGrid() {
 				p.pos = start_pos + delta * Vector3(x, y, z);
 				this->irrProbes.push_back(p);
 			}
+	std::cout << "Creating irr grid: DONE\n";
 }
 
 void Renderer::CalculateAllProbes(Scene* scene) {
@@ -435,7 +446,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	Matrix44 inv_vp = camera->viewprojection_matrix;
+	Matrix44 inv_view = camera->view_matrix;
 	inv_vp.inverse();
+	inv_view.inverse();
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
 
@@ -559,6 +572,34 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		}
 		
 	shader->disable();
+
+	if (irr_probe_texture && useIrr) {
+		Shader* ishader= Shader::Get("irradiance");
+		ishader->enable();
+		ishader->setUniform("u_inverse_viewprojection", inv_vp);
+		ishader->setUniform("u_inv_view_matrix", inv_view);
+		ishader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
+		ishader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
+		ishader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
+		ishader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+		if(this->useSSAO)
+			ishader->setUniform("u_SSAO_texture", (this->useSSAOBlur) ? this->ssao_fbo->color_textures[1] : this->ssao_fbo->color_textures[0], 4);
+		else
+			ishader->setUniform("u_SSAO_texture", Texture::getWhiteTexture(), 4);
+		ishader->setUniform("u_probes_texture", irr_probe_texture, 5);
+		
+		ishader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
+		ishader->setUniform("u_irr_start", start_irr);
+		ishader->setUniform("u_irr_end", end_irr);
+		ishader->setUniform("u_irr_dims", irr_probe_dim);
+		ishader->setUniform("u_num_probes", irr_probe_texture->height);
+		ishader->setUniform("u_irr_normal_distance",.1f );
+		ishader->setUniform("u_irr_delta", end_irr - start_irr);
+
+
+		quad->render(GL_TRIANGLES);
+		
+	}
 	
 	illumination_fbo->unbind();
 	glDisable(GL_BLEND);
