@@ -322,6 +322,9 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 		ImGui::Checkbox("Use HDR", &renderer->useHDR);
 		ImGui::Checkbox("Use IRR", &renderer->useIrr);
+		if (renderer->useIrr) {
+			ImGui::SliderFloat("irr multiplier", &renderer->irrMultiplier, 0.0, 10.0);
+		}
 		if (renderer->useHDR)
 			ImGui::Checkbox("Use Tonemapper", &renderer->useTonemapper);
 		if (renderer->useTonemapper) {

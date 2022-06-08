@@ -346,6 +346,11 @@ uniform sampler2D u_metallic_roughness_texture;
 uniform sampler2D u_emissive_texture;
 uniform sampler2D u_normal_texture;
 
+//Phong Factors:
+uniform vec3 u_emmisive_mat_factor;
+uniform float u_roughness_mat_factor;
+uniform float u_metallic_mat_factor;
+
 const int MAX_LIGHTS= 5;
 
 
@@ -430,6 +435,8 @@ uniform sampler2D u_depth_texture;
 uniform sampler2D u_SSAO_texture;
 uniform sampler2D u_probes_texture;
 
+uniform float multiplier;
+
 
 layout (location=0)out vec4 FragColor;
 
@@ -456,7 +463,7 @@ void main(){
 	
 	
 	if (depth>=1.0){
-		FragColor= vec4(1.0);
+		FragColor= vec4(0,1,0,0.0);
 		return;
 	}
 	
@@ -494,7 +501,7 @@ void main(){
 	//now we can use the coefficients to compute the irradiance
 	vec3 irradiance = ComputeSHIrradiance( N, sh );
 	
-	vec3 color= gb0_color.xyz *irradiance*ssao_color.xyz;
+	vec3 color= gb0_color.xyz *irradiance*ssao_color.xyz*multiplier;
 	
 	FragColor= vec4(color,1.0);
 	
@@ -722,6 +729,10 @@ uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
 uniform bool u_useOcclusion;
 
+uniform vec3 u_emmisive_mat_factor;
+uniform float u_roughness_mat_factor;
+uniform float u_metallic_mat_factor;
+
 
 
 layout (location=0) out vec4 GB0;
@@ -748,9 +759,11 @@ void main()
 		color.xyz= degamma(color.xyz);
 		emmisiveCol= degamma(emmisiveCol.xyz);
 	}
+	emmisiveCol= emmisiveCol*u_emmisive_mat_factor;
 	
 	vec3 MRT_texture= texture(u_metallic_roughness_texture,v_uv).xyz;
-	
+	MRT_texture.y*= u_metallic_mat_factor;
+	MRT_texture.z*= u_roughness_mat_factor;
 	
 
 	if(color.a < u_alpha_cutoff)
@@ -953,11 +966,11 @@ void main()
 	
 
 	float occlusionFactor= texture(u_metallic_roughness_texture,v_uv).x;
-	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y;
-	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z;
+	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y*u_metallic_mat_factor;
+	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z*u_roughness_mat_factor;
 	
 	vec4 emissive= texture(u_emissive_texture,v_uv);
-	
+	emissive.xyz*=u_emmisive_mat_factor;
 	
 	if(u_use_normalmap){
 		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
@@ -1086,9 +1099,10 @@ void main()
 	float NdotL=1.0;
 	
 	float occlusionFactor= texture(u_metallic_roughness_texture,v_uv).x;
-	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y;
-	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z;
+	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y*u_metallic_mat_factor;
+	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z*u_roughness_mat_factor;
 	vec4 emissive= texture(u_emissive_texture,v_uv);
+	emissive.xyz= emissive.xyz*u_emmisive_mat_factor;
 	
 	if(u_use_normalmap){
 		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;

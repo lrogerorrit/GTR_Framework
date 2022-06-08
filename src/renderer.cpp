@@ -595,6 +595,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		ishader->setUniform("u_num_probes", irr_probe_texture->height);
 		ishader->setUniform("u_irr_normal_distance",.1f );
 		ishader->setUniform("u_irr_delta", end_irr - start_irr);
+		ishader->setUniform("multiplier", irrMultiplier);
 
 
 		quad->render(GL_TRIANGLES);
@@ -745,7 +746,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	textureNormal = material->normal_texture.texture;
 
 	if (texture == NULL) texture = Texture::getWhiteTexture(); //a 1x1 white texture
-	if (textureEmissive == NULL) textureEmissive = Texture::getBlackTexture(); //a 1x1 white texture
+	if (textureEmissive == NULL) textureEmissive = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureMRT == NULL) textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
 	//if (textureNormal == NULL)  //textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
 
@@ -778,6 +779,9 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("usePBR", usePBR);
+	shader->setVector3("u_emmisive_mat_factor", material->emissive_factor);
+	shader->setFloat("u_roughness_mat_factor", material->roughness_factor);
+	shader->setFloat("u_metallic_mat_factor", material->metallic_factor);
 	
 	float t = getTime();
 	shader->setUniform("u_time", t);
@@ -859,7 +863,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	
 	GTR::Scene* scene = Application::instance->getActiveScene();
 
-
+	
 
 	texture = material->color_texture.texture;
 	textureEmissive = material->emissive_texture.texture;
@@ -869,7 +873,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	if (texture == NULL)
 		texture = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureEmissive == NULL)
-		textureEmissive = Texture::getBlackTexture(); //a 1x1 white texture
+		textureEmissive = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureMRT == NULL)
 		textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureNormal == NULL)
@@ -915,6 +919,11 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	shader->setUniform("u_model", model );
 	
 	shader->setFloat("u_emissive_factor", this->useEmissive?1.0:0.0 );
+
+	shader->setVector3("u_emmisive_mat_factor", material->emissive_factor);
+	shader->setFloat("u_roughness_mat_factor", material->roughness_factor);
+	shader->setFloat("u_metallic_mat_factor", material->metallic_factor);
+	
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("usePBR", usePBR);

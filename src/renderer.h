@@ -95,6 +95,8 @@ namespace GTR {
 		Vector3 irr_probe_dim;
 		Vector3 start_irr;
 		Vector3 end_irr;
+
+		float irrMultiplier = 1.0;
 		
 		
 		
