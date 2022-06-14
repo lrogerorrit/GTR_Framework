@@ -12,6 +12,7 @@
 
 namespace GTR {
 	class Scene;
+	
 }
 
 class Application

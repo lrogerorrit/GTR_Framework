@@ -47,10 +47,45 @@ bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
 
 GTR::Renderer::Renderer()
 {
+	int width = Application::instance->window_width;
+	int height = Application::instance->window_height;
+	skybox = CubemapFromHDRE("data/kloppenheim.hdre");
+	reflection_fbo = new FBO();
+	reflection_fbo->create(
+		width,
+		height
+	);
+	
+
 	this->shadowMapAtlas = new shadowAtlas();
 	//Generate random points
 	generateSpherePoints(64, 1, false);
 	
+}
+
+void Renderer::renderSkybox(Camera* camera)
+{
+	Mesh* mesh = Mesh::Get("data/meshes/sphere.obj");
+	Shader* shader = Shader::Get("skybox");
+	shader->enable();
+
+	Matrix44 model;
+
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	model.setTranslation(camera->eye);
+	model.scale(5, 5, 5);
+	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+	shader->setUniform("u_camera_position", camera->eye);
+	shader->setUniform("u_model", model);
+	shader->setUniform("u_texture",skybox, 1);
+
+	mesh->render(GL_TRIANGLES);
+	shader->disable();
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	
+
 }
 
 void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
@@ -123,6 +158,9 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 			renderProbe(data.pos, 5.0, (float*)&data.sh.coeffs);
 		}
 	}
+	if (displayReflectionProbes) {
+		renderReflectionProbes(scene, camera);
+	}
 	
 	
 	
@@ -140,6 +178,8 @@ void GTR::Renderer::RenderForward(Camera* camera, GTR::Scene* scene)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	checkGLErrors();
+
+	renderSkybox(camera);
 
 	for (int i = 0; i < this->render_calls.size(); ++i) {
 		RenderCall& rc = this->render_calls[i];
@@ -423,12 +463,17 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 
 	
 	gbuffers_fbo->depth_texture->unbind();
-		
-	gbuffers_fbo->bind();
+	
+	
+	
+	renderSkybox(camera);
+	
 
-	glClearColor(0,0,0, 1.0);
+	gbuffers_fbo->bind();
+	glClearColor(0, 0, 0, 1.0);
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	
 
 	std::vector<RenderCall*> alphaNodes;
 	alphaNodes.clear();
@@ -1050,7 +1095,66 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	glDisable(GL_BLEND);
 }
 
+void GTR::Renderer::updateReflectionProbes(GTR::Scene* scene) {
+	for (int i = 0; i < scene->entities.size(); ++i) {
+		BaseEntity* ent = scene->entities[i];
+		if (!ent->visible || ent->entity_type != eEntityType::REFLECTION_PROBE) continue;
+		ReflectionProbeEntity* probe = (ReflectionProbeEntity*)ent;
+		if (!probe->texture) {
+			probe->texture = new Texture();
+			probe->texture->createCubemap(256, 256,NULL,GL_RGB,GL_UNSIGNED_INT,true);
+		}
+		captureReflectionProbe(scene, probe->texture, probe->model.getTranslation());
+	}
+}
 
+void GTR::Renderer::renderReflectionProbes(GTR::Scene* scene, Camera* camera) {
+	Mesh* mesh = Mesh::Get("data/meshes/sphere.obj");
+	Shader* shader = Shader::Get("reflectionProbe");
+	shader->enable();
+
+	
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+	shader->setUniform("u_camera_position", camera->eye);
+	
+	
+	for (int i = 0; i < scene->entities.size(); ++i) {
+		BaseEntity* ent = scene->entities[i];
+		if (!ent->visible || ent->entity_type != eEntityType::REFLECTION_PROBE) continue;
+		ReflectionProbeEntity* probe = (ReflectionProbeEntity*)ent;
+		if (!probe->texture) continue;
+		shader->setUniform("u_model", ent->model);
+		shader->setTexture("u_texture", probe->texture, 0);
+		mesh->render(GL_TRIANGLES);
+	}
+	
+
+	shader->disable();
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+}
+
+void GTR::Renderer::captureReflectionProbe(GTR::Scene* scene, Texture* tex, Vector3 pos) {
+	for (int i = 0; i < 6; ++i) {
+		FBO* global_fbo= Texture::getGlobalFBO(tex,i);
+		Camera camera;
+		camera.setPerspective(90, 1, .1, 1000);
+		Vector3 eye = pos;
+		Vector3 center = pos + cubemapFaceNormals[i][2];
+		Vector3 up = cubemapFaceNormals[i][1];
+		camera.lookAt(eye, center, up);
+		camera.enable();
+		global_fbo->bind();
+		RenderForward(&camera, scene);
+		global_fbo->unbind();
+
+		tex->generateMipmaps();
+		
+	}
+}
 
 
 

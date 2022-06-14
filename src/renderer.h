@@ -53,6 +53,7 @@ namespace GTR {
 		std::vector<sProbe> irrProbes;
 		
 		
+		
 	public:
 		GTR::shadowAtlas* shadowMapAtlas;
 		bool orderNodes = true;
@@ -71,6 +72,7 @@ namespace GTR {
 		bool showSSAO = false;
 		bool isOptimizedDeferred = true;
 		bool displayIRRProbes = false;
+		bool displayReflectionProbes = false;
 
 		bool shouldCalculateProbes = false;
 
@@ -90,7 +92,10 @@ namespace GTR {
 		FBO* tonemapper_fbo= NULL;
 		FBO* deferred_alpha_fbo = NULL; //TODO: Remove
 		FBO* irradiance_fbo = NULL;
+		FBO* reflection_fbo = NULL;
+		
 		Texture* irr_probe_texture = NULL;
+		Texture* skybox = NULL;
 		
 		Vector3 irr_probe_dim;
 		Vector3 start_irr;
@@ -105,6 +110,8 @@ namespace GTR {
 		//...
 
 		Renderer();
+
+		void renderSkybox(Camera* camera);
 
 		//renders several elements of the scene
 		void renderScene(GTR::Scene* scene, Camera* camera);
@@ -124,6 +131,12 @@ namespace GTR {
 		//to render one mesh given its material and transformation matrix
 		void renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
 		void uploadSingleLightToShader(Shader* shader, GTR::LightEntity* light);
+
+		void updateReflectionProbes(GTR::Scene* scene);
+
+		void renderReflectionProbes(GTR::Scene* scene, Camera* cam);
+
+		void captureReflectionProbe(GTR::Scene* scene, Texture* tex, Vector3 pos);
 		
 		void renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mesh, GTR::Material* material, Camera* camera);
 

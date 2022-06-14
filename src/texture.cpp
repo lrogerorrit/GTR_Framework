@@ -553,11 +553,11 @@ void Texture::toViewport(Shader* shader)
 	shader->disable();
 }
 
-FBO* Texture::getGlobalFBO(Texture* texture)
+FBO* Texture::getGlobalFBO(Texture* texture,int cubeMapFace)
 {
 	if (!global_fbo)
 		global_fbo = new FBO();
-	global_fbo->setTexture(texture);
+	global_fbo->setTexture(texture,cubeMapFace);
 	return global_fbo;
 }
 

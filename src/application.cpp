@@ -110,6 +110,10 @@ Application::Application(int window_width, int window_height, SDL_Window* window
 	
 	GTR::Scene* scene = this->getActiveScene();
 
+	GTR::ReflectionProbeEntity *reflectionProbe = new GTR::ReflectionProbeEntity();
+	
+	scene->addEntity(reflectionProbe);
+
 	camera->lookAt(scene->main_camera.eye, scene->main_camera.center, Vector3(0, 1, 0));
 	camera->fov = scene->main_camera.fov;
 
@@ -313,7 +317,9 @@ void Application::renderDebugGUI(void)
 	ImGui::Checkbox("Wireframe", &render_wireframe);
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
 	ImGui::Checkbox("Use PBR", &renderer->usePBR);
-	ImGui::Checkbox("Display Probes", &renderer->displayIRRProbes);
+	ImGui::Checkbox("Display IRR Probes", &renderer->displayIRRProbes);
+	ImGui::Checkbox("Display Reflection Probes", &renderer->displayReflectionProbes);
+	
 	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {
 		ImGui::Checkbox("Show GBuffers", &renderer->showGBuffers);
 		ImGui::Checkbox("Show SSAO", &renderer->showSSAO);
@@ -393,6 +399,7 @@ void Application::onKeyDown( SDL_KeyboardEvent event )
 		case SDLK_f: camera->center.set(0, 0, 0); camera->updateViewMatrix(); break;
 		case SDLK_p: renderer->pipelineType = (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) ? GTR::ePipeLineType::FORWARD : GTR::ePipeLineType::DEFERRED; break;
 		case SDLK_F5: Shader::ReloadAll(); break;
+		case SDLK_SPACE: renderer->renderReflectionProbes(scene, camera); break;
 		case SDLK_F6:
 			scene->clear();
 			scene->load(scene->filename.c_str());

@@ -3,6 +3,7 @@
 
 #include "prefab.h"
 #include "extra/cJSON.h"
+#include "texture.h"
 
 GTR::Scene* GTR::Scene::instance = NULL;
 
@@ -174,3 +175,17 @@ void GTR::PrefabEntity::renderInMenu()
 #endif
 }
 
+GTR::ReflectionProbeEntity::ReflectionProbeEntity()
+{
+	entity_type = REFLECTION_PROBE;
+	texture = NULL;
+}
+
+void GTR::ReflectionProbeEntity::renderInMenu()
+{
+	BaseEntity::renderInMenu();
+	#ifndef SKIP_IMGUI
+	std::string isCalculated = "Calculated " + (!(!texture))?"true":"false";
+	ImGui::Text(isCalculated.c_str());
+	#endif
+}

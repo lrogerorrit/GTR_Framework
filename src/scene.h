@@ -6,8 +6,10 @@
 #include <string>
 #include "fbo.h"
 
+
 //forward declaration
 class cJSON; 
+class Texture;
 
 
 //our namespace
@@ -91,6 +93,16 @@ namespace GTR {
 		PrefabEntity();
 		virtual void renderInMenu();
 		virtual void configure(cJSON* json);
+	};
+
+	class ReflectionProbeEntity : public GTR::BaseEntity {
+	public:
+		ReflectionProbeEntity();
+		
+		Texture* texture;
+		virtual void renderInMenu();
+		virtual void configure(cJSON* json){};
+	
 	};
 
 	//contains all entities of the scene

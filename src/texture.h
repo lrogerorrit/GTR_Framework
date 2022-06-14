@@ -182,7 +182,7 @@ public:
 	//copy to another texture
 	void copyTo(Texture* destination, Shader* shader = NULL);
 
-	static FBO* getGlobalFBO(Texture* texture);
+	static FBO* getGlobalFBO(Texture* texture,int cubeMapFace=-1);
 	static Texture* getBlackTexture();
 	static Texture* getWhiteTexture();
 };

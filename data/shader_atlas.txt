@@ -14,6 +14,8 @@ ssaoBlur quad.vs ssaoBlur.fs
 tonemapper quad.vs tonemapping.fs
 probe basic.vs probe.fs
 irradiance quad.vs irradiance.fs
+skybox basic.vs skybox.fs
+reflectionProbe basic.vs reflectionProbe.fs
 
 
 \constants
@@ -1188,6 +1190,41 @@ void main()
 	FragColor = color;
 }
 
+\skybox.fs
+
+#version 330 core
+
+in vec3 v_position;
+in vec3 v_world_position; 
+uniform vec3 u_camera_position;
+uniform samplerCube u_texture;
+out vec4 FragColor;
+
+void main()
+{
+	vec3 V= v_world_position - u_camera_position;
+
+	FragColor = texture(u_texture,V);
+}
+
+\reflectionProbe.fs
+
+#version 330 core
+
+in vec3 v_position;
+in vec3 v_world_position; 
+in vec3 v_normal;
+uniform vec3 u_camera_position;
+uniform samplerCube u_texture;
+out vec4 FragColor;
+
+void main()
+{
+	vec3 V= v_world_position - u_camera_position;
+	vec3 N= normalize(v_normal);
+	vec3 R= reflect(V,N);
+	FragColor = texture(u_texture,V);
+}
 
 \texture.fs
 
