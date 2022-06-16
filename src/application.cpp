@@ -112,6 +112,8 @@ Application::Application(int window_width, int window_height, SDL_Window* window
 
 	GTR::ReflectionProbeEntity *reflectionProbe = new GTR::ReflectionProbeEntity();
 	
+	reflectionProbe->model.scale(5, 5, 5);
+	reflectionProbe->model.translate(0, 5, 0);
 	scene->addEntity(reflectionProbe);
 
 	camera->lookAt(scene->main_camera.eye, scene->main_camera.center, Vector3(0, 1, 0));
@@ -399,7 +401,7 @@ void Application::onKeyDown( SDL_KeyboardEvent event )
 		case SDLK_f: camera->center.set(0, 0, 0); camera->updateViewMatrix(); break;
 		case SDLK_p: renderer->pipelineType = (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) ? GTR::ePipeLineType::FORWARD : GTR::ePipeLineType::DEFERRED; break;
 		case SDLK_F5: Shader::ReloadAll(); break;
-		case SDLK_SPACE: renderer->renderReflectionProbes(scene, camera); break;
+		case SDLK_SPACE: renderer->updateReflectionProbes(scene); break;
 		case SDLK_F6:
 			scene->clear();
 			scene->load(scene->filename.c_str());

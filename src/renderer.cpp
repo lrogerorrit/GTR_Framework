@@ -989,6 +989,13 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 
 	//this is used to say which is the alpha threshold to what we should not paint a pixel on the screen (to cut polygons according to texture alpha)
 	shader->setUniform("u_alpha_cutoff", material->alpha_mode == GTR::eAlphaMode::MASK ? material->alpha_cutoff : 0);
+	
+	Texture* reflection = skybox;
+	if(probe && isRenderingReflections)
+		shader->setUniform("u_skybox_texture", probe->texture, 4);
+	else
+		shader->setUniform("u_skybox_texture", reflection, 4);
+	shader->setUniform("u_has_reflection", isRenderingReflections);
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 	
 	
@@ -1105,6 +1112,7 @@ void GTR::Renderer::updateReflectionProbes(GTR::Scene* scene) {
 			probe->texture->createCubemap(256, 256,NULL,GL_RGB,GL_UNSIGNED_INT,true);
 		}
 		captureReflectionProbe(scene, probe->texture, probe->model.getTranslation());
+		this->probe = probe;
 	}
 }
 
@@ -1126,10 +1134,12 @@ void GTR::Renderer::renderReflectionProbes(GTR::Scene* scene, Camera* camera) {
 		if (!ent->visible || ent->entity_type != eEntityType::REFLECTION_PROBE) continue;
 		ReflectionProbeEntity* probe = (ReflectionProbeEntity*)ent;
 		if (!probe->texture) continue;
+		
 		shader->setUniform("u_model", ent->model);
 		shader->setTexture("u_texture", probe->texture, 0);
 		mesh->render(GL_TRIANGLES);
 	}
+	
 	
 
 	shader->disable();
@@ -1148,10 +1158,13 @@ void GTR::Renderer::captureReflectionProbe(GTR::Scene* scene, Texture* tex, Vect
 		camera.lookAt(eye, center, up);
 		camera.enable();
 		global_fbo->bind();
+		this->isRenderingReflections = true;
 		RenderForward(&camera, scene);
+		this->isRenderingReflections = false;
 		global_fbo->unbind();
 
 		tex->generateMipmaps();
+
 		
 	}
 }

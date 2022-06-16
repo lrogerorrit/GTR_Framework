@@ -318,7 +318,13 @@ vec3 getPBRColor(pointData data){
 
 
 }
+\reflection
+uniform samplerCube u_skybox_texture;
 
+vec3 calculateReflection(vec3 worldPos, vec3 camPos, vec3 N,float metalness){
+	vec3 R= reflect(normalize(worldPos-camPos),N);
+	return texture(u_skybox_texture,R,metalness*4).xyz;
+}
 
 
 \commonForwardUniforms
@@ -342,6 +348,8 @@ uniform vec3 u_camera_position;
 uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
 uniform bool u_useOcclusion;
+
+
 
 //Phong textures:
 uniform sampler2D u_metallic_roughness_texture;
@@ -947,6 +955,7 @@ out vec4 FragColor;
 #include "shadows"
 #include "normals"
 #include "pbr"
+#include "reflection"
 
 
 
@@ -957,6 +966,7 @@ out vec4 FragColor;
 void main()
 {
 	vec3 N= normalize(v_normal);
+	vec3 N_simple= N;
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	vec3 V= normalize(u_camera_position-v_world_position);
@@ -1043,7 +1053,9 @@ void main()
 	color.xyz*= light;
 	
 	color.xyz+=emissive.xyz*u_emissive_factor;
-	
+	vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,roughnessFactor);
+	float reflection_factor= metallicFactor;
+	color.xyz= mix(color.xyz,reflection,reflection_factor);
 	FragColor = color;
 	//FragColor= emissive;
 }
@@ -1082,6 +1094,7 @@ out vec4 FragColor;
 #include "shadows"
 #include "normals"
 #include "pbr"
+#include "reflection"
 
 void main()
 {
@@ -1155,6 +1168,9 @@ void main()
 	color.xyz*= light;
 	if(light_index==0)
 		color.xyz+=emissive.xyz*u_emissive_factor;
+	vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,roughnessFactor);
+	float reflection_factor= metallicFactor;
+	color.xyz= mix(color.xyz,reflection,reflection_factor);
 	FragColor = color;
 }
 
@@ -1221,8 +1237,9 @@ out vec4 FragColor;
 void main()
 {
 	vec3 V= v_world_position - u_camera_position;
-
-	FragColor = texture(u_texture,V);
+	vec3 N= normalize(v_normal);
+	vec3 R= reflect(V,N);
+	FragColor = textureLod(u_texture,R,5);
 }
 
 \texture.fs

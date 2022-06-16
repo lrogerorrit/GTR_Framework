@@ -17,6 +17,7 @@ struct sProbe {
 
 namespace GTR {
 	class shadowAtlas;
+	class ReflectionProbeEntity;
 
 	enum class eMultiLightType {
 		SINGLE_PASS,
@@ -76,10 +77,13 @@ namespace GTR {
 
 		bool shouldCalculateProbes = false;
 
+		bool isRenderingReflections = false;
 		
 		float u_scale = 1.0f;
 		float u_average_lum = 1.0f;
 		float u_lumwhite2 = 1.0f;
+
+		ReflectionProbeEntity* probe=NULL;
 		
 		
 		
