@@ -49,7 +49,7 @@ GTR::Renderer::Renderer()
 {
 	int width = Application::instance->window_width;
 	int height = Application::instance->window_height;
-	skybox = CubemapFromHDRE("data/kloppenheim.hdre");
+	skybox = CubemapFromHDRE("data/night.hdre");
 	reflection_fbo = new FBO();
 	reflection_fbo->create(
 		width,
@@ -425,7 +425,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		
 		
 		gbuffers_fbo->create(width,height,
-			3, 			//three textures
+			4, 			//three textures
 			GL_RGBA, 		//four channels
 			GL_UNSIGNED_BYTE, //1 byte
 			true);		//add depth_texture
@@ -491,8 +491,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	Matrix44 inv_vp = camera->viewprojection_matrix;
-	Matrix44 inv_view = camera->view_matrix;
 	inv_vp.inverse();
+	Matrix44 inv_view = camera->view_matrix;
 	inv_view.inverse();
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
@@ -510,12 +510,14 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
 	Shader* shader = Shader::Get("deferred");
 	shader->enable();
+	shader->setUniform("u_skybox_texture", skybox, 9);
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 	shader->setUniform("u_camera_position", camera->eye);
 	shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
 	shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
-	shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
-	shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+	shader->setUniform("u_gb3_texture", gbuffers_fbo->color_textures[2], 2);
+	shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[3], 3);
+	shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 4);
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
@@ -528,7 +530,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 
 	//pass the inverse projection of the camera to reconstruct world pos.
 	
-	shader->setUniform("u_inverse_viewprojection", inv_vp);
+	shader->setMatrix44("u_inverse_viewprojection", inv_vp);
 	//pass the inverse window resolution, this may be useful
 	shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 	this->shadowMapAtlas->uploadDataToShader(shader,this->lights);
@@ -568,17 +570,20 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 					shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
 					shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
 					shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
-					shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+					shader->setUniform("u_gb3_texture", gbuffers_fbo->color_textures[3], 3);
+					shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 4);
 					shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 					shader->setUniform("u_camera_position", camera->eye);
 					shader->setUniform("u_inverse_viewprojection", inv_vp);
 					shader->setUniform("useHDR", this->useHDR);
 					shader->setUniform("usePBR", usePBR);
+					shader->setUniform("u_skybox_texture", skybox, 9);
 					//pass the inverse window resolution, this may be useful
 					shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
 					this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
 					glDisable(GL_DEPTH_TEST);
 					glDisable(GL_BLEND);
+					
 
 					
 
@@ -641,6 +646,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		ishader->setUniform("u_irr_normal_distance",.1f );
 		ishader->setUniform("u_irr_delta", end_irr - start_irr);
 		ishader->setUniform("multiplier", irrMultiplier);
+		
+		
 
 
 		quad->render(GL_TRIANGLES);
@@ -713,6 +720,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		else
 			ssao_fbo->color_textures[0]->toViewport();
 	}
+	
 }
 
 //renders all the prefab
