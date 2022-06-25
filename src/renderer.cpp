@@ -70,9 +70,10 @@ void Renderer::renderSkybox(Camera* camera)
 	shader->enable();
 
 	Matrix44 model;
-
+	
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
+	
 	model.setTranslation(camera->eye);
 	model.scale(5, 5, 5);
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
@@ -82,6 +83,7 @@ void Renderer::renderSkybox(Camera* camera)
 
 	mesh->render(GL_TRIANGLES);
 	shader->disable();
+	
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	
@@ -425,9 +427,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		
 		
 		gbuffers_fbo->create(width,height,
-			3, 			//three textures
+			4, 			//three textures
 			GL_RGBA, 		//four channels
-			GL_UNSIGNED_BYTE, //1 byte
+			GL_FLOAT, //1 byte
 			true);		//add depth_texture
 		
 		illumination_fbo->create(width, height,
@@ -466,11 +468,11 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	
-	renderSkybox(camera);
 	
-
+	
+	renderSkybox(Camera::current);
 	gbuffers_fbo->bind();
-	glClearColor(0, 0, 0, 1.0);
+	//glClearColor(0, 0, 0, 1.0);
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
@@ -501,12 +503,13 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	//render to screen
 	illumination_fbo->bind();
-	glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
+	//glClearColor(scene->background_color.x, scene->background_color.y, scene->background_color.z, 1.0);
+	
 	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	
-	
+	Texture* reflection = skybox;
 	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
 	Shader* shader = Shader::Get("deferred");
 	shader->enable();
@@ -515,16 +518,21 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
 	shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
 	shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
-	shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+	shader->setUniform("u_gb3_texture", gbuffers_fbo->color_textures[3], 3);
+	shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 4);
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
 	shader->setFloat("u_useOcclusion", this->useOcclusion);
 	shader->setUniform("u_use_SSAO", this->useSSAO);
 	shader->setUniform("useHDR", this->useHDR);
 	shader->setUniform("usePBR", usePBR);
+	shader->setUniform("u_useReflections", this->useReflections);
 	if (this->useSSAO)
-		shader->setUniform("u_SSAO_texture",(this->useSSAOBlur)? this->ssao_fbo->color_textures[1]:this->ssao_fbo->color_textures[0], 4);
-	
+		shader->setUniform("u_SSAO_texture",(this->useSSAOBlur)? this->ssao_fbo->color_textures[1]:this->ssao_fbo->color_textures[0], 5);
+	if (probe && isRenderingReflections)
+		shader->setUniform("u_skybox_texture", probe->texture, 6);
+	else
+		shader->setUniform("u_skybox_texture", reflection, 6);
 
 	//pass the inverse projection of the camera to reconstruct world pos.
 	
@@ -537,7 +545,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 		glEnable(GL_CULL_FACE);
 	}*/
-
+	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 	
@@ -568,7 +576,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 					shader->setUniform("u_gb0_texture", gbuffers_fbo->color_textures[0], 0);
 					shader->setUniform("u_gb1_texture", gbuffers_fbo->color_textures[1], 1);
 					shader->setUniform("u_gb2_texture", gbuffers_fbo->color_textures[2], 2);
-					shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 3);
+					shader->setUniform("u_gb3_texture", gbuffers_fbo->color_textures[3], 3);
+					shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 4);
+					
+					shader->setUniform("u_useReflections", false);
 					shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 					shader->setUniform("u_camera_position", camera->eye);
 					shader->setUniform("u_inverse_viewprojection", inv_vp);
@@ -650,6 +661,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	illumination_fbo->unbind();
 	glDisable(GL_BLEND);
 	glDisable(GL_CULL_FACE);
+	
+	
 	//Apply multipass reading to gbuffers
 
 	//Forward alpha render
@@ -683,12 +696,18 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	gbuffers_fbo->depth_texture->copyTo(0);
 	glEnable(GL_DEPTH_TEST);
 	
+	
+	
+	
+	
+	
+	
 	for (int i = 0; i < alphaNodes.size(); ++i) {
 		RenderCall* rc = alphaNodes[i];
 		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
 		renderMeshWithMaterialAndLighting(rc->model, rc->mesh, rc->material, camera);
 	}
-	
+	glEnable(GL_DEPTH_TEST);
 	
 
 	if (showGBuffers) {
@@ -713,6 +732,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		else
 			ssao_fbo->color_textures[0]->toViewport();
 	}
+	
+	
 }
 
 //renders all the prefab
@@ -792,7 +813,9 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 
 	if (texture == NULL) texture = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureEmissive == NULL) textureEmissive = Texture::getWhiteTexture(); //a 1x1 white texture
-	if (textureMRT == NULL) textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
+	if (textureMRT == NULL) {
+		//textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
+	}
 	//if (textureNormal == NULL)  //textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
 
 
@@ -819,6 +842,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);
 	shader->setUniform("u_model", model);
+	
 	shader->setUniform("useHDR", this->useHDR);
 	shader->setFloat("u_emissive_factor", this->useEmissive ? 1.0 : 0.0);
 	shader->setUniform("u_use_normalmap", this->useNormalMap);
@@ -837,8 +861,11 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 
 	if (textureEmissive)
 		shader->setUniform("u_emissive_texture", textureEmissive, 1);
-	if (textureMRT)
+	if (textureMRT) {
 		shader->setUniform("u_metallic_roughness_texture", textureMRT, 2);
+		shader->setUniform("u_has_MRT_texture", true);
+	}else
+		shader->setUniform("u_has_MRT_texture", false);
 	if (textureNormal)
 		shader->setUniform("u_normal_texture", textureNormal, 3);
 	else

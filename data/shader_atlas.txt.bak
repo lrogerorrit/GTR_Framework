@@ -744,12 +744,14 @@ uniform bool u_useOcclusion;
 uniform vec3 u_emmisive_mat_factor;
 uniform float u_roughness_mat_factor;
 uniform float u_metallic_mat_factor;
+uniform bool u_has_MRT_texture;
 
 
 
 layout (location=0) out vec4 GB0;
 layout (location=1) out vec4 GB1;
 layout (location=2) out vec4 GB2;
+layout (location=3) out vec4 GB3;
 
 #include "normals"
 #include "hdr"
@@ -757,12 +759,15 @@ layout (location=2) out vec4 GB2;
 void main()
 {
 	vec3 N;
+	vec3 simpleN= normalize(v_normal);
 	if(u_use_normalmap){
 		vec3 normalUV= texture(u_normal_texture,v_uv).xyz;
 		N= perturbNormal(v_normal,v_world_position,v_uv,normalUV);
 	}
-	else
-		N= normalize(v_normal);
+	else{
+		N= simpleN;
+		
+	}
 	vec2 uv = v_uv;
 	vec4 color = u_color;
 	color *= texture( u_texture, v_uv );
@@ -772,18 +777,20 @@ void main()
 		emmisiveCol= degamma(emmisiveCol.xyz);
 	}
 	emmisiveCol= emmisiveCol*u_emmisive_mat_factor;
-	
-	vec3 MRT_texture= texture(u_metallic_roughness_texture,v_uv).xyz;
-	MRT_texture.y*= u_metallic_mat_factor;
-	MRT_texture.z*= u_roughness_mat_factor;
-	
+	vec3 MRT_texture;
+	if(u_has_MRT_texture){
+		MRT_texture= texture(u_metallic_roughness_texture,v_uv).xyz;
+		MRT_texture.y*= u_metallic_mat_factor;
+		MRT_texture.z*= u_roughness_mat_factor;
+	}
 
 	if(color.a < u_alpha_cutoff)
 		discard;
 
 	GB0 = vec4(color.xyz,emmisiveCol.x);
 	GB1= vec4(N*.5+vec3(0.5),emmisiveCol.y);
-	GB2= vec4(MRT_texture,emmisiveCol.z);
+	GB2= vec4(u_has_MRT_texture?MRT_texture:vec3(1.0,u_metallic_mat_factor,u_roughness_mat_factor),emmisiveCol.z);
+	GB3= vec4(simpleN*.5+vec3(0.5),1.0);
 }
 
 
@@ -800,6 +807,7 @@ const int MAX_LIGHTS= 5;
 uniform sampler2D u_gb0_texture;
 uniform sampler2D u_gb1_texture;
 uniform sampler2D u_gb2_texture;
+uniform sampler2D u_gb3_texture;
 uniform sampler2D u_depth_texture;
 
 uniform mat4 u_inverse_viewprojection;
@@ -843,6 +851,7 @@ out vec4 FragColor;
 #include "pbr"
 #include "ssaoCalc"
 #include "hdr"
+#include "reflection"
 
 void main(){
 	
@@ -856,6 +865,12 @@ void main(){
 	vec4 gb0_color= texture(u_gb0_texture,uv); //Albedo  
 	vec4 gb1_color= texture(u_gb1_texture,uv); //Normal
 	vec4 gb2_color= texture(u_gb2_texture,uv); //MRT
+	vec4 gb3_color= texture(u_gb3_texture,uv); //Simple N
+	
+	float occlusionFactor= gb2_color.x;
+	float metallicFactor= gb2_color.y;
+	float roughnessFactor= gb2_color.z;
+	
 	vec3 emmisiveCol= vec3(gb0_color.w,gb1_color.w,gb2_color.w);
 	if (useHDR){
 		emmisiveCol= degamma(emmisiveCol);
@@ -869,6 +884,7 @@ void main(){
 	
 
 	vec3 N= normalize(gb1_color.xyz*2.0-vec3(1.0));
+	vec3 N_simple= normalize(gb3_color.xyz*2.0-vec3(1.0));
 	vec3 V= normalize(u_camera_position-world_position);
 	
 	vec4 color= vec4(gb0_color.xyz,1.0);
@@ -922,8 +938,19 @@ void main(){
 	color.xyz*= light;
 	if (convertToGamma)
 		color.xyz= gamma(color.xyz);
+	vec3 reflection;
+	if(u_useReflections){
+		reflection= calculateReflection(world_position, u_camera_position, N_simple,metallicFactor);
+		float reflection_factor= (roughnessFactor*(metallicFactor/.6));
+		color.xyz= mix(color.xyz,reflection,reflection_factor);
+	}
 	//color.xyz+=//u_emissive_factor;
 	FragColor = color;
+	
+	//FragColor = vec4(reflection,1.0);
+	//FragColor=vec4(metallicFactor,metallicFactor,metallicFactor,1.0);
+	//FragColor=vec4(roughnessFactor,roughnessFactor,roughnessFactor,1.0);
+	//FragColor= vec4(uv.x,uv.y,0,1.0);
 }
 
 
@@ -1061,7 +1088,7 @@ void main()
 		color.xyz= mix(color.xyz,reflection,reflection_factor);
 	}
 	FragColor = color;
-	//FragColor=vec4(metallicFactor,metallicFactor,metallicFactor,1.0);
+	FragColor=vec4(metallicFactor,metallicFactor,metallicFactor,1.0);
 	//FragColor=vec4(roughnessFactor,roughnessFactor,roughnessFactor,1.0);
 	//FragColor=vec4((roughnessFactor*(metallicFactor/.5))*.8,(roughnessFactor*(metallicFactor/.5))*.8,(roughnessFactor*(metallicFactor/.5))*.8,1.0);
 	//FragColor= emissive;
@@ -1177,7 +1204,7 @@ void main()
 	if(light_index==0 && u_useReflections){
 		color.xyz+=emissive.xyz*u_emissive_factor;
 		vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,metallicFactor);
-		float reflection_factor= roughnessFactor*.1;
+		float reflection_factor= (roughnessFactor*(metallicFactor/.6));
 		color.xyz= mix(color.xyz,reflection,reflection_factor);
 	}
 	FragColor = color;
