@@ -320,6 +320,7 @@ vec3 getPBRColor(pointData data){
 }
 \reflection
 uniform samplerCube u_skybox_texture;
+uniform bool u_useReflections;
 
 vec3 calculateReflection(vec3 worldPos, vec3 camPos, vec3 N,float metalness){
 	vec3 R= reflect(normalize(worldPos-camPos),N);
@@ -349,7 +350,7 @@ uniform bool u_use_normalmap;
 uniform float u_emissive_factor;
 uniform bool u_useOcclusion;
 
-
+uniform bool u_has_MRT_texture;
 
 //Phong textures:
 uniform sampler2D u_metallic_roughness_texture;
@@ -977,10 +978,10 @@ void main()
 		discard;
 		
 	
-
-	float occlusionFactor= texture(u_metallic_roughness_texture,v_uv).x;
-	float metallicFactor= texture(u_metallic_roughness_texture,v_uv).y*u_metallic_mat_factor;
-	float roughnessFactor= texture(u_metallic_roughness_texture,v_uv).z*u_roughness_mat_factor;
+	
+	float occlusionFactor= u_has_MRT_texture?texture(u_metallic_roughness_texture,v_uv).x:1.0;
+	float metallicFactor= u_has_MRT_texture?texture(u_metallic_roughness_texture,v_uv).y*u_metallic_mat_factor:u_metallic_mat_factor;
+	float roughnessFactor=u_has_MRT_texture?texture(u_metallic_roughness_texture,v_uv).z*u_roughness_mat_factor:u_roughness_mat_factor;
 	
 	vec4 emissive= texture(u_emissive_texture,v_uv);
 	emissive.xyz*=u_emmisive_mat_factor;
@@ -1053,10 +1054,16 @@ void main()
 	color.xyz*= light;
 	
 	color.xyz+=emissive.xyz*u_emissive_factor;
-	vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,roughnessFactor);
-	float reflection_factor= metallicFactor;
-	color.xyz= mix(color.xyz,reflection,reflection_factor);
+	
+	if(u_useReflections){
+		vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,metallicFactor);
+		float reflection_factor= (roughnessFactor*(metallicFactor/.6));
+		color.xyz= mix(color.xyz,reflection,reflection_factor);
+	}
 	FragColor = color;
+	//FragColor=vec4(metallicFactor,metallicFactor,metallicFactor,1.0);
+	//FragColor=vec4(roughnessFactor,roughnessFactor,roughnessFactor,1.0);
+	//FragColor=vec4((roughnessFactor*(metallicFactor/.5))*.8,(roughnessFactor*(metallicFactor/.5))*.8,(roughnessFactor*(metallicFactor/.5))*.8,1.0);
 	//FragColor= emissive;
 }
 
@@ -1167,10 +1174,10 @@ void main()
 		light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	
 	color.xyz*= light;
-	if(light_index==0){
+	if(light_index==0 && u_useReflections){
 		color.xyz+=emissive.xyz*u_emissive_factor;
 		vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,metallicFactor);
-		float reflection_factor= roughnessFactor;
+		float reflection_factor= (roughnessFactor*(metallicFactor/.6));
 		color.xyz= mix(color.xyz,reflection,reflection_factor);
 	}
 	FragColor = color;

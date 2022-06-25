@@ -320,6 +320,7 @@ void Application::renderDebugGUI(void)
 	ImGui::Checkbox("Show Atlas", &renderer->showAtlas);
 	ImGui::Checkbox("Use PBR", &renderer->usePBR);
 	ImGui::Checkbox("Display IRR Probes", &renderer->displayIRRProbes);
+	ImGui::Checkbox("Use Reflections", &renderer->useReflections);
 	ImGui::Checkbox("Display Reflection Probes", &renderer->displayReflectionProbes);
 	
 	if (renderer->pipelineType == GTR::ePipeLineType::DEFERRED) {

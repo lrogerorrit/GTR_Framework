@@ -67,6 +67,7 @@ namespace GTR {
 		bool useTonemapper = false;
 		bool usePBR = true;
 		bool useIrr = false;
+		bool useReflections = true;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;

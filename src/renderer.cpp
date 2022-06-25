@@ -49,7 +49,7 @@ GTR::Renderer::Renderer()
 {
 	int width = Application::instance->window_width;
 	int height = Application::instance->window_height;
-	skybox = CubemapFromHDRE("data/kloppenheim.hdre");
+	skybox = CubemapFromHDRE("data/night.hdre");
 	reflection_fbo = new FBO();
 	reflection_fbo->create(
 		width,
@@ -919,8 +919,10 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 		texture = Texture::getWhiteTexture(); //a 1x1 white texture
 	if (textureEmissive == NULL)
 		textureEmissive = Texture::getWhiteTexture(); //a 1x1 white texture
-	if (textureMRT == NULL)
-		textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
+	if (textureMRT == NULL) {
+		
+		//textureMRT = Texture::getWhiteTexture(); //a 1x1 white texture
+	}
 	if (textureNormal == NULL)
 		textureNormal = Texture::getWhiteTexture(); //a 1x1 white texture
 	
@@ -960,6 +962,7 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	//upload uniforms
 	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	shader->setUniform("u_camera_position", camera->eye);
+	shader->setUniform("u_useReflections", this->useReflections);
 	
 	shader->setUniform("u_model", model );
 	
@@ -981,8 +984,13 @@ void Renderer::renderMeshWithMaterialAndLighting(const Matrix44 model, Mesh* mes
 	
 	if (textureEmissive)
 		shader->setUniform("u_emissive_texture", textureEmissive, 1);
-	if (textureMRT)
+	if (textureMRT) {
 		shader->setUniform("u_metallic_roughness_texture", textureMRT, 2);
+		shader->setUniform("u_has_MRT_texture",true);
+	}
+	else {
+		shader->setUniform("u_has_MRT_texture",false);
+	}
 	if (textureNormal)
 		shader->setUniform("u_normal_texture", textureNormal, 3);
 	
