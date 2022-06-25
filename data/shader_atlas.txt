@@ -922,7 +922,7 @@ void main(){
 	if (convertToGamma)
 		color.xyz= gamma(color.xyz);
 	//color.xyz+=//u_emissive_factor;
-	FragColor = vec4(world_position,1.0);
+	FragColor = color;
 }
 
 
@@ -1167,11 +1167,12 @@ void main()
 		light += (NdotL*u_light_color)*attFactor*spotFactor*shadowFactor;
 	
 	color.xyz*= light;
-	if(light_index==0)
+	if(light_index==0){
 		color.xyz+=emissive.xyz*u_emissive_factor;
-	vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,roughnessFactor);
-	float reflection_factor= metallicFactor;
-	color.xyz= mix(color.xyz,reflection,reflection_factor);
+		vec3 reflection= calculateReflection(v_world_position, u_camera_position, N_simple,metallicFactor);
+		float reflection_factor= roughnessFactor;
+		color.xyz= mix(color.xyz,reflection,reflection_factor);
+	}
 	FragColor = color;
 }
 
