@@ -922,7 +922,7 @@ void main(){
 	if (convertToGamma)
 		color.xyz= gamma(color.xyz);
 	//color.xyz+=//u_emissive_factor;
-	FragColor = color;
+	FragColor = vec4(world_position,1.0);
 }
 
 

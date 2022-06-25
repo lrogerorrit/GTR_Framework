@@ -546,7 +546,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	if (!lights.size()) {
 		shader->setUniform("u_ambient_light", Vector3());
 		quad->render(GL_TRIANGLES);
-		return;
+		
 	}else
 		for (int i = 0; i < lights.size(); ++i)
 		{
