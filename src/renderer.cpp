@@ -472,7 +472,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	renderSkybox(Camera::current);
 	gbuffers_fbo->bind();
-	//glClearColor(0, 0, 0, 1.0);
+	glClearColor(0, 0, 0, 1.0);
 	// Clear the color and the depth buffer
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
