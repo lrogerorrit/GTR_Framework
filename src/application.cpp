@@ -331,6 +331,10 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Optimize Quad Rendering", &renderer->isOptimizedDeferred);
 		ImGui::Checkbox("Use HDR", &renderer->useHDR);
 		ImGui::Checkbox("Use IRR", &renderer->useIrr);
+		ImGui::Checkbox("Use Volumetric", &renderer->useVolumetric);
+		if(renderer->useVolumetric)
+			ImGui::SliderFloat("Air density", &renderer->airDensity, 0.0, 5.0,"%.4f");
+		
 		if (renderer->useIrr) {
 			ImGui::SliderFloat("irr multiplier", &renderer->irrMultiplier, 0.0, 10.0);
 		}

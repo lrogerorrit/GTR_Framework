@@ -424,6 +424,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		ssao_fbo = new FBO();
 		tonemapper_fbo = new FBO();
 		deferred_alpha_fbo = new FBO();
+		volumetric_fbo = new FBO();
 		
 		
 		gbuffers_fbo->create(width,height,
@@ -453,6 +454,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_RGBA,
 			GL_UNSIGNED_BYTE,
 			true);
+		volumetric_fbo->create(width, height, 1, GL_RGBA);
+		
 	}
 	//bind the texture we want to change
 	gbuffers_fbo->depth_texture->bind();
@@ -702,13 +705,50 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	
+	glEnable(GL_DEPTH_TEST);
 	for (int i = 0; i < alphaNodes.size(); ++i) {
 		RenderCall* rc = alphaNodes[i];
 		//BoundingBox world_bounding = transformBoundingBox(rc.model, rc.mesh->box);
 		renderMeshWithMaterialAndLighting(rc->model, rc->mesh, rc->material, camera);
 	}
-	glEnable(GL_DEPTH_TEST);
+
 	
+	if (this->useVolumetric) {
+		glDisable(GL_DEPTH_TEST);
+		volumetric_fbo->bind();
+		glClearColor(0,0,0, 1.0);
+		shader = Shader::Get("volumetric");
+		shader->enable();
+		shader->setUniform("u_inverse_viewprojection", inv_vp);
+		shader->setUniform("u_camera_position", camera->eye);
+		shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 0);
+		shader->setUniform("u_air_density", airDensity);
+		shader->setUniform("u_iRes", Vector2(1.0 / (float)volumetric_fbo->color_textures[0]->width, 1.0 / (float)volumetric_fbo->color_textures[0]->height));
+		glDisable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+		this->shadowMapAtlas->uploadDataToShader(shader, this->lights);
+		//Put in a for and get 
+		for (int i = 0; i < lights.size(); ++i) {
+			if (lights[i]->light_type == eLightType::POINT) continue;
+			uploadSingleLightToShader(shader, lights[i]);
+			shader->setUniform("light_index", i);
+			quad->render(GL_TRIANGLES);
+			if(i==0)
+				glEnable(GL_BLEND);
+			
+			
+			
+		
+		}
+		//glDisable(GL_BLEND);
+		shader->disable();
+		volumetric_fbo->unbind();
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		volumetric_fbo->color_textures[0]->toViewport();
+		glDisable(GL_BLEND);
+
+	}
 
 	if (showGBuffers) {
 		glViewport(0, height * .5, width * .5, height * .5);
@@ -894,6 +934,7 @@ void GTR::Renderer::renderMeshWithMaterialToGBuffers(const Matrix44 model, Mesh*
 void GTR::Renderer::uploadSingleLightToShader(Shader* shader, GTR::LightEntity* light)
 {
 	shader->setUniform("u_light_color", light->color * light->intensity);
+	shader->setUniform("u_light_intensity", light->intensity);
 	shader->setUniform("u_light_position", light->model.getTranslation());
 	shader->setUniform("u_light_max_distance", light->max_distance);
 	shader->setUniform("u_light_type", (int)light->light_type);

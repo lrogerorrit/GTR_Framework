@@ -68,6 +68,7 @@ namespace GTR {
 		bool usePBR = true;
 		bool useIrr = false;
 		bool useReflections = true;
+		bool useVolumetric = true;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
@@ -83,6 +84,8 @@ namespace GTR {
 		float u_scale = 1.0f;
 		float u_average_lum = 1.0f;
 		float u_lumwhite2 = 1.0f;
+		
+		float airDensity = .001;
 
 		ReflectionProbeEntity* probe=NULL;
 		
@@ -98,6 +101,7 @@ namespace GTR {
 		FBO* deferred_alpha_fbo = NULL; //TODO: Remove
 		FBO* irradiance_fbo = NULL;
 		FBO* reflection_fbo = NULL;
+		FBO* volumetric_fbo = NULL;
 		
 		Texture* irr_probe_texture = NULL;
 		Texture* skybox = NULL;
