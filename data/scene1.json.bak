@@ -6,14 +6,6 @@
 	"camera_fov":60,
 	"entities":[
 		{
-			"name":"sign",
-			"type":"PREFAB",
-			"filename":"prefabs/sign.glb",
-			"position":[118,48,-400],
-			"angle":120,
-			"scale":[60,60,60]
-		},
-		{
 			"name":"floor",
 			"type":"PREFAB",
 			"filename":"prefabs/road/road.gltf",
@@ -35,13 +27,6 @@
 			"scale":[10,10,10]
 		},
 		{
-			"name":"decal",
-			"type":"DECAL",
-			"albedo":"textures/graffiti.png",
-			"position":[0,0,0],
-			"scale":[2,1,1]
-		},
-		{
 			"name":"car1",
 			"type":"PREFAB",
 			"filename":"prefabs/gmc/scene.gltf",
@@ -61,6 +46,14 @@
 			"filename":"prefabs/house_test/scene.gltf",
 			"position":[300,20,200],
 			"scale":[0.4,0.4,0.4]
+		},
+		{
+			"name":"sign",
+			"type":"PREFAB",
+			"filename":"prefabs/sign.glb",
+			"position":[118,48,-400],
+			"angle":120,
+			"scale":[60,60,60]
 		},
 		{
 			"name":"house",
@@ -130,6 +123,14 @@
 			"shadow_bias": -0.001,
 			"cast_shadows": true,
 			"light_type":"DIRECTIONAL"
+		},
+		{
+			"name":"decal",
+			"type":"DECAL",
+			"texture":"data/textures/doggo.png",
+			"position":[0,0,0],
+			"scale":[40,40,40]
 		}
+		
 	]
 }

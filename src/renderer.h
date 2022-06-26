@@ -49,6 +49,7 @@ namespace GTR {
 	private:
 		std::vector<RenderCall> render_calls;
 		std::vector<GTR::LightEntity*> lights;
+		std::vector<GTR::DecalEntity*> decals;
 
 		std::vector<Vector3> randomPoints;
 		std::vector<sProbe> irrProbes;
@@ -85,16 +86,17 @@ namespace GTR {
 		float u_average_lum = 1.0f;
 		float u_lumwhite2 = 1.0f;
 		
-		float airDensity = .001;
+		float airDensity = 1;
 
 		ReflectionProbeEntity* probe=NULL;
 		
-		
+		Mesh* cube;
 		
 		int multiLightType = (int) eMultiLightType::SINGLE_PASS;
 		ePipeLineType pipelineType = ePipeLineType::FORWARD;
 
 		FBO* gbuffers_fbo= NULL;
+		FBO* decals_fbo= NULL;
 		FBO* illumination_fbo= NULL;
 		FBO* ssao_fbo= NULL;
 		FBO* tonemapper_fbo= NULL;

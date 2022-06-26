@@ -128,8 +128,10 @@ GTR::BaseEntity* GTR::Scene::createEntity(std::string type)
 {
 	if (type == "PREFAB")
 		return new GTR::PrefabEntity();
-	else if (type=="LIGHT")
+	else if (type == "LIGHT")
 		return new GTR::LightEntity();
+	else if (type == "DECAL")
+		return new GTR::DecalEntity();
     return NULL;
 }
 
@@ -188,4 +190,20 @@ void GTR::ReflectionProbeEntity::renderInMenu()
 	std::string isCalculated = "Calculated " + (!(!texture))?"true":"false";
 	ImGui::Text(isCalculated.c_str());
 	#endif
+}
+
+GTR::DecalEntity::DecalEntity()
+{
+	entity_type = eEntityType::DECAL;
+}
+
+void GTR::DecalEntity::renderInMenu()
+{
+	BaseEntity::renderInMenu();
+}
+
+void GTR::DecalEntity::configure(cJSON* json)
+{
+	if (cJSON_GetObjectItem(json, "texture"))
+		texture = cJSON_GetObjectItem(json, "texture")->valuestring;
 }

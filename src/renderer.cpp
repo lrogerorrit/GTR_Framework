@@ -98,6 +98,7 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 
 	this->render_calls.clear();
 	this->lights.clear();
+	this->decals.clear();
 	this->shadowMapAtlas->clearArray();
 
 	for (int i = 0; i < scene->entities.size(); ++i)
@@ -119,6 +120,9 @@ void Renderer::renderScene(GTR::Scene* scene, Camera* camera)
 		else if (ent->entity_type == eEntityType::LIGHT) {
 			LightEntity* light = (GTR::LightEntity*)ent;
 			this->lights.push_back(light);
+		}
+		else if (ent->entity_type == eEntityType::DECAL) {
+			decals.push_back((DecalEntity*) ent);
 		}
 	}
 
@@ -419,13 +423,15 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	int width= Application::instance->window_width;
 	int height= Application::instance->window_height;
 	if (!this->gbuffers_fbo) {
+		cube = new Mesh();
+		cube->createCube();
 		gbuffers_fbo= new FBO();
 		illumination_fbo= new FBO();
 		ssao_fbo = new FBO();
 		tonemapper_fbo = new FBO();
 		deferred_alpha_fbo = new FBO();
 		volumetric_fbo = new FBO();
-		
+		decals_fbo = new FBO();
 		
 		gbuffers_fbo->create(width,height,
 			4, 			//three textures
@@ -455,6 +461,12 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_UNSIGNED_BYTE,
 			true);
 		volumetric_fbo->create(width, height, 1, GL_RGBA);
+
+		decals_fbo->create(width, height,
+			3,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			true);
 		
 	}
 	//bind the texture we want to change
@@ -493,12 +505,57 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 				renderMeshWithMaterialToGBuffers(rc.model, rc.mesh, rc.material, camera);
 	}
 	gbuffers_fbo->unbind();
-	
-	
+
 	Matrix44 inv_vp = camera->viewprojection_matrix;
 	Matrix44 inv_view = camera->view_matrix;
 	inv_vp.inverse();
 	inv_view.inverse();
+	
+	//render decals
+	gbuffers_fbo->color_textures[1]->copyTo(decals_fbo->color_textures[0]);
+	gbuffers_fbo->color_textures[2]->copyTo(decals_fbo->color_textures[1]);
+	gbuffers_fbo->color_textures[3]->copyTo(decals_fbo->color_textures[2]);
+	decals_fbo->bind();
+	gbuffers_fbo->depth_texture->copyTo(NULL);
+	decals_fbo->unbind();
+	
+
+	gbuffers_fbo->bind();
+	Shader* shader = Shader::Get("decal");
+	shader->enable();
+	shader->setUniform("u_gb0_texture", decals_fbo->color_textures[0], 0);
+	shader->setUniform("u_gb1_texture", decals_fbo->color_textures[1], 1);
+	shader->setUniform("u_gb2_texture", decals_fbo->color_textures[2], 2);
+	shader->setUniform("u_depth_texture", decals_fbo->depth_texture, 3);
+	
+	shader->setUniform("u_inverse_viewprojection", inv_vp);
+	shader->setUniform("u_camera_position", camera->eye);
+	shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
+
+	shader->setUniform("u_iRes", Vector2(1.0 / (float)width, 1.0 / (float)height));
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	for (int i = 0; i < decals.size(); ++i) {
+		DecalEntity* decal = decals[i];
+		Matrix44 imodel = decal->model;
+		imodel.inverse();
+		if (decal->texture=="") continue;
+		Texture* decal_texture = Texture::Get(decal->texture.c_str());
+		if (!decal_texture) continue;
+		shader->setUniform("u_decal_texture", decal_texture, 5);
+		shader->setUniform("u_model", decal->model);
+		shader->setUniform("u_imodel", imodel);
+		cube->render(GL_TRIANGLES);
+
+	}
+	glDisable(GL_BLEND);
+
+
+	gbuffers_fbo->unbind();
+
+	//
+	
+	
 	Mesh* quad = Mesh::getQuad();
 	Mesh* sphere= Mesh::Get("data/meshes/sphere.obj");
 
@@ -514,7 +571,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	Texture* reflection = skybox;
 	//Shader* shader = Shader::Get((this->isOptimizedDeferred)?"deferred_opti":"deferred");
-	Shader* shader = Shader::Get("deferred");
+	shader = Shader::Get("deferred");
 	shader->enable();
 	shader->setUniform("u_ambient_light", scene->ambient_light);
 	shader->setUniform("u_camera_position", camera->eye);
@@ -697,7 +754,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	
 	gbuffers_fbo->depth_texture->copyTo(0);
-	glEnable(GL_DEPTH_TEST);
+	
 	
 	
 	
