@@ -432,6 +432,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		deferred_alpha_fbo = new FBO();
 		volumetric_fbo = new FBO();
 		decals_fbo = new FBO();
+		DoF_fbo = new FBO();
 		
 		gbuffers_fbo->create(width,height,
 			4, 			//three textures
@@ -464,6 +465,11 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 
 		decals_fbo->create(width, height,
 			3,
+			GL_RGBA,
+			GL_UNSIGNED_BYTE,
+			true);
+		DoF_fbo->create(width, height,
+			2,
 			GL_RGBA,
 			GL_UNSIGNED_BYTE,
 			true);
@@ -773,6 +779,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	if (this->useVolumetric) {
 		glDisable(GL_DEPTH_TEST);
 		volumetric_fbo->bind();
+		
 		glClearColor(0,0,0, 1.0);
 		shader = Shader::Get("volumetric");
 		shader->enable();
@@ -805,6 +812,47 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		volumetric_fbo->color_textures[0]->toViewport();
 		glDisable(GL_BLEND);
 
+		glBlendFunc(GL_ONE, GL_ONE);
+
+	}
+
+	if (useDoF) {
+		DoF_fbo->bind();
+		//Blur Pass;
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
+		//glClearColor(1, 0, 0, 1.0);
+		shader = Shader::Get("blur");
+		shader->enable();
+		//glDisable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+		shader->setUniform("u_inverse_viewprojection", inv_vp);
+		shader->setUniform("colTexture", (useTonemapper && useHDR)?tonemapper_fbo->color_textures[0]:illumination_fbo->color_textures[0], 0);
+		shader->setUniform("u_iRes", Vector2(1.0 / (float)DoF_fbo->color_textures[0]->width,1.0 / (float)DoF_fbo->color_textures[0]->height));
+		shader->setUniform("parameters",Vector2(4.0, 1));
+		quad->render(GL_TRIANGLES);
+		
+		shader->disable();
+		glDisable(GL_DEPTH_TEST);
+
+		//DoF Pass
+		shader = Shader::Get("depthOfField");
+		shader->enable();
+		shader->setUniform("u_iRes", Vector2(1.0 / (float)DoF_fbo->color_textures[0]->width, 1.0 / (float)DoF_fbo->color_textures[0]->height));
+		shader->setUniform("u_inverse_viewprojection", inv_vp);
+		shader->setUniform("u_depth_texture", gbuffers_fbo->depth_texture, 0);
+		shader->setUniform("focusTexture", (useTonemapper && useHDR) ? tonemapper_fbo->color_textures[0] : illumination_fbo->color_textures[0], 1);
+		shader->setUniform("outOfFocusTexture", DoF_fbo->color_textures[1],2);
+		shader->setUniform("focusPoint", DoF_focusPoint);
+		shader->setUniform("nearFar", Vector2(camera->near_plane,camera->far_plane));
+		shader->setUniform("u_minDistance", DoF_minDist);
+		shader->setUniform("u_maxDistance", DoF_maxDist);
+		
+		quad->render(GL_TRIANGLES);
+		shader->disable();
+		DoF_fbo->unbind();
+		glDisable(GL_BLEND);
+		DoF_fbo->color_textures[1]->toViewport();
 	}
 
 	if (showGBuffers) {

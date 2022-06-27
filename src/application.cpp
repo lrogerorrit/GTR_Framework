@@ -334,6 +334,13 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use Volumetric", &renderer->useVolumetric);
 		if(renderer->useVolumetric)
 			ImGui::SliderFloat("Air density", &renderer->airDensity, 0.0, 5.0,"%.4f");
+		ImGui::Checkbox("Use DoF", &renderer->useDoF);
+		if (renderer->useDoF) {
+			ImGui::SliderFloat("Min Dist", &renderer->DoF_minDist, 0, 1000);
+			ImGui::SliderFloat("Max Dist", &renderer->DoF_maxDist, 0, 1000);
+			ImGui::SliderFloat2("Focus point", (float*) & renderer->DoF_focusPoint.value, 0, 1);
+			
+		}
 		
 		if (renderer->useIrr) {
 			ImGui::SliderFloat("irr multiplier", &renderer->irrMultiplier, 0.0, 10.0);
