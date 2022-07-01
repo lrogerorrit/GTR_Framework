@@ -25,6 +25,9 @@ brightFilter quad.vs brightFilter.fs
 FXAA quad.vs FXAA.fs
 LUT quad.vs LUT.fs
 grain quad.vs grain.fs
+lensDistortion quad.vs lensDistortion.fs
+chromaticAberration quad.vs chromaticAberration.fs
+motionBlur quad.vs motionBlur.fs
 
 
 \constants
@@ -430,6 +433,162 @@ void main()
 	gl_Position = vec4( a_vertex, 1.0 );
 }
 
+\motionBlur.fs
+#version 330 core
+
+in vec2 v_uv;
+
+uniform sampler2D u_texture;
+uniform vec2 resolution;
+
+uniform sampler2D u_depth_texture;
+uniform mat4 viewProjectionInverseMatrix;
+uniform mat4 previousViewProjectionMatrix;
+uniform float velocityFactor;
+uniform vec3 linearVelocity;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+out vec4 FragColor;
+
+float unpack_depth(const in vec4 color) {
+	return color.r;
+	//return ( color.r * 256. * 256. * 256. + color.g * 256. * 256. + color.b * 256. + color.a ) / ( 256. * 256. * 256. );
+}
+
+void main() {
+	
+	float zOverW = unpack_depth( texture2D( u_depth_texture, v_uv ) );
+
+	// H is the viewport position at this pixel in the range -1 to 1.  
+	vec4 H = vec4( v_uv.x * 2. - 1., v_uv.y * 2. - 1., zOverW, 1. );  
+	// Transform by the view-projection inverse.  
+	vec4 D = H * viewProjectionInverseMatrix;
+	// Divide by w to get the world position.  
+	vec4 worldPos = D / D.w;
+
+	vec4 currentPos = H;
+	// Use the world position, and transform by the previous view-projection matrix.  
+	vec4 previousPos = worldPos * previousViewProjectionMatrix;
+	// Convert to nonhomogeneous points [-1,1] by dividing by w.  
+	previousPos /= previousPos.w;  
+	// Use this frame's position and last frame's to compute the pixel velocity.  
+	vec3 l = .1 * ( projectionMatrix * modelViewMatrix * vec4( linearVelocity, 0. ) ).xyz;
+	vec2 velocity = vec2( 1. / 100000000000. );//l.xy;
+
+	vec4 finalColor = vec4( 0. );
+	vec2 offset = vec2( 0. ); 
+	float weight = 0.;
+	const int samples = 20;
+	for( int i = 0; i < samples; i++ ) {  
+			offset = velocity * ( float( i ) / ( float( samples ) - 1. ) - .5 );
+			vec4 c = texture2D( u_texture, v_uv + offset );
+		finalColor += c;
+	}  
+	//finalColor /= .5 * float( samples );
+	FragColor = vec4( finalColor.rgb, 1. );
+	//gl_FragColor = vec4( velocity, 0., 1. );
+	//gl_FragColor = vec4( vec3( zOverW ), 1. );
+	//gl_FragColor = vec4( .5 + .5 * l, 1. );
+
+}
+
+\chromaticAberration.fs
+#version 330 core
+
+uniform sampler2D u_texture;
+uniform vec2 resolution;
+
+out vec4 FragColor;
+
+vec2 barrelDistortion(vec2 coord, float amt) {
+	vec2 cc = coord - 0.5;
+	float dist = dot(cc, cc);
+	return coord + cc * dist * amt;
+}
+
+float sat( float t )
+{
+	return clamp( t, 0.0, 1.0 );
+}
+
+float linterp( float t ) {
+	return sat( 1.0 - abs( 2.0*t - 1.0 ) );
+}
+
+float remap( float t, float a, float b ) {
+	return sat( (t - a) / (b - a) );
+}
+
+vec4 spectrum_offset( float t ) {
+	vec4 ret;
+	float lo = step(t,0.5);
+	float hi = 1.0-lo;
+	float w = linterp( remap( t, 1.0/6.0, 5.0/6.0 ) );
+	ret = vec4(lo,1.0,hi, 1.) * vec4(1.0-w, w, 1.0-w, 1.);
+
+	return pow( ret, vec4(1.0/2.2) );
+}
+
+const float max_distort = 2.2;
+const int num_iter = 12;
+const float reci_num_iter_f = 1.0 / float(num_iter);
+
+void main()
+{	
+	vec2 uv=(gl_FragCoord.xy/resolution.xy*.5)+.25;
+
+	vec4 sumcol = vec4(0.0);
+	vec4 sumw = vec4(0.0);	
+	for ( int i=0; i<num_iter;++i )
+	{
+		float t = float(i) * reci_num_iter_f;
+		vec4 w = spectrum_offset( t );
+		sumw += w;
+		sumcol += w * texture2D( u_texture, barrelDistortion(uv, .6 * max_distort*t ) );
+	}
+		
+	FragColor = sumcol / sumw;
+}
+
+\lensDistortion.fs
+
+#version 330 core
+
+#include "constants"
+in vec2 v_uv;
+
+uniform sampler2D u_texture;
+uniform float BarrelPower;
+
+out vec4 FragColor;
+
+vec2 Distort(vec2 p){
+    float theta  = atan(p.y, p.x);
+    float radius = length(p);
+    radius = pow(radius, BarrelPower);
+    p.x = radius * cos(theta);
+    p.y = radius * sin(theta);
+    return 0.5 * (p + 1.0);
+}
+
+void main()
+{
+  vec2 xy = 2.0 * v_uv - 1.0;
+  vec2 uv;
+  float d = length(xy);
+  if (d < 1.0)
+  {
+    uv = Distort(xy);
+  }
+  else
+  {
+    uv = v_uv;
+  }
+  vec4 c = texture2D(u_texture, uv);
+  FragColor = c;
+}
+
 \grain.fs
 #version 330 core
 precision mediump float;
@@ -452,7 +611,7 @@ void main(){
 	 vec2 st = gl_FragCoord.xy/u_resolution.xy;
 	float randVal= random(st+displ);
 	vec3 randCol= vec3(randVal,randVal,randVal);
-	FragColor.rgb= mix(color.rgb,randCol,.1);
+	FragColor.rgb= mix(color.rgb,randCol,.08);
 	
 }
 

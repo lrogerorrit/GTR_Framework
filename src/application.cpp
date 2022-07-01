@@ -338,6 +338,15 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use Bloom", &renderer->useBloom);
 		ImGui::Checkbox("Use DoF", &renderer->useDoF);
 		ImGui::Checkbox("Use Grain", &renderer->useGrain);
+		ImGui::Checkbox("Use Chromatic Aberration", &renderer->useChromaticAberration);
+		ImGui::Checkbox("Use Motion Blur", &renderer->useMotionBlur);
+		if(renderer->useMotionBlur)
+			ImGui::SliderFloat("Velocity Factor", &renderer->velocityFactor, 0.0, 5.0, "%.4f");
+		
+		
+		ImGui::Checkbox("Use Lens Distortion", &renderer->useLensDistortion);
+		if(renderer->useLensDistortion)
+			ImGui::SliderFloat("Lens Distortion Strength", &renderer->lens_barrel_power, 0.0, 10.0, "%.4f");
 		ImGui::Checkbox("Use LUT", &renderer->useLUT);
 		
 		if (renderer->useLUT){

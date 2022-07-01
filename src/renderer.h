@@ -96,6 +96,9 @@ namespace GTR {
 		bool useFXAA = false;
 		bool useLUT = false;
 		bool useGrain = false;
+		bool useLensDistortion = false;
+		bool useChromaticAberration = false;
+		bool useMotionBlur = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
@@ -121,9 +124,16 @@ namespace GTR {
 		LUTTypes Luttype= LUTTypes::BleachBypass;
 		float LUTmix = .5;
 
+		float lens_barrel_power=1.5;
+
+		float velocityFactor = .4;
+		Matrix44 prevViewProjection;
+		Vector3 prevCamPos;
 		
 
 		float bright_color_threshold = .7;
+		
+		
 
 		ReflectionProbeEntity* probe=NULL;
 		

@@ -847,6 +847,9 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	
 	bool appliedFX = applyFX(camera, (useTonemapper && useHDR) ? tonemapper_fbo->color_textures[0] : illumination_fbo->color_textures[0], gbuffers_fbo->depth_texture);
 
+	prevCamPos = camera->eye;
+	prevViewProjection = camera->viewprojection_matrix;
+	
 	/*if (useDoF) {
 		DoF_fbo->bind();
 		//Blur Pass;
@@ -926,6 +929,34 @@ bool GTR::Renderer::applyFX(Camera* camera, Texture* color_texture, Texture* dep
 	Shader* shader=NULL;
 	bool appliedEffect = false;
 
+	if (useFXAA) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("FXAA");
+		shader->enable();
+		shader->setUniform("u_viewportSize", res);
+		shader->setUniform("u_iViewportSize", iRes);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	
+	if (useChromaticAberration) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("chromaticAberration");
+		shader->enable();
+		shader->setUniform("resolution", res);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	
+	
 	if (useLUT) {
 		appliedEffect = true;
 		fbo = Texture::getGlobalFBO(postFX_textureA);
@@ -941,19 +972,27 @@ bool GTR::Renderer::applyFX(Camera* camera, Texture* color_texture, Texture* dep
 		std::swap(postFX_textureA, postFX_textureB);		
 	}
 
-	if (useFXAA) {
+	if (useMotionBlur) {
 		appliedEffect = true;
 		fbo = Texture::getGlobalFBO(postFX_textureA);
 		fbo->bind();
-		shader = Shader::Get("FXAA");
+		shader = Shader::Get("motionBlur");
 		shader->enable();
-		shader->setUniform("u_viewportSize",res );
-		shader->setUniform("u_iViewportSize", iRes);
+		shader->setUniform("u_depthTexture", depth_texture, 1);
+		shader->setUniform("resolution", res);
+		shader->setUniform("viewProjectionInverseMatrix", invVP);
+		shader->setUniform("previousViewProjectionMatrix", prevViewProjection);
+		shader->setUniform("velocityFactor", this->velocityFactor);
+		shader->setUniform("linearVelocity", (prevCamPos - camera->eye));
+		shader->setUniform("modelViewMatrix", camera->view_matrix);
+		shader->setUniform("projectionmatrix", camera->projection_matrix);
 		current_texture->toViewport(shader);
 		fbo->unbind();
 		current_texture = postFX_textureA;
 		std::swap(postFX_textureA, postFX_textureB);
 	}
+
+	
 	if (useGrain) {
 		appliedEffect = true;
 		fbo = Texture::getGlobalFBO(postFX_textureA);
@@ -1031,6 +1070,18 @@ bool GTR::Renderer::applyFX(Camera* camera, Texture* color_texture, Texture* dep
 		shader->setUniform("nearFar", Vector2(camera->near_plane, camera->far_plane));
 		shader->setUniform("u_minDistance", DoF_minDist);
 		shader->setUniform("u_maxDistance", DoF_maxDist);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	if (useLensDistortion) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("lensDistortion");
+		shader->enable();
+		shader->setUniform("BarrelPower", lens_barrel_power);
 		current_texture->toViewport(shader);
 		fbo->unbind();
 		current_texture = postFX_textureA;
