@@ -835,6 +835,8 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		shader->disable();
 		glDisable(GL_DEPTH_TEST);
 
+		glClear(GL_DEPTH_BUFFER_BIT);
+		
 		//DoF Pass
 		shader = Shader::Get("depthOfField");
 		shader->enable();
