@@ -334,10 +334,16 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use Volumetric", &renderer->useVolumetric);
 		if(renderer->useVolumetric)
 			ImGui::SliderFloat("Air density", &renderer->airDensity, 0.0, 5.0,"%.4f");
+		ImGui::Checkbox("Use FXAA", &renderer->useFXAA);
 		ImGui::Checkbox("Use Bloom", &renderer->useBloom);
-		if(renderer->useBloom)
-			ImGui::SliderFloat("Bloom Threshold", &renderer->bright_color_threshold, 0.0, 1.0,"%.4f");
 		ImGui::Checkbox("Use DoF", &renderer->useDoF);
+		ImGui::Checkbox("Use Grain", &renderer->useGrain);
+		ImGui::Checkbox("Use LUT", &renderer->useLUT);
+		
+		if (renderer->useLUT){
+			ImGui::SliderFloat("Mix: º", &renderer->LUTmix, 0.0, 1.0, "%.4f");
+			ImGui::Combo("LUT Type", (int*)&renderer->Luttype, "BleachBypass\0Bleak\0CandleLight\0FoggyNight\0Horror\0LateNight\0LeaveBlue\0LeaveGreen\0LeaveRed\0Sunset\0TealOrange\0TealOrangeContrast\0TealOrangeLowContrast\0Vintage\0");
+		}
 		if (renderer->useDoF) {
 			ImGui::SliderFloat("Min Dist", &renderer->DoF_minDist, 0, 1000);
 			ImGui::SliderFloat("Max Dist", &renderer->DoF_maxDist, 0, 1000);

@@ -7,6 +7,23 @@
 class Camera;
 
 
+enum class LUTTypes {
+	BleachBypass,
+	Bleak,
+	CandleLight,
+	FoggyNight,
+	Horror,
+	LateNight,
+	LeaveBlue,
+	LeaveGreen,
+	LeaveRed,
+	Sunset,
+	TealOrange,
+	TealOrangeContrast,
+	TealOrangeLowContrast,
+	Vintage	
+};
+
 
 struct sProbe {
 	Vector3 pos; //where is located
@@ -53,6 +70,7 @@ namespace GTR {
 
 		std::vector<Vector3> randomPoints;
 		std::vector<sProbe> irrProbes;
+		std::vector<Texture*> LUTTextures;
 		
 		
 		
@@ -77,6 +95,7 @@ namespace GTR {
 		bool useBloom = false;
 		bool useFXAA = false;
 		bool useLUT = false;
+		bool useGrain = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
@@ -98,6 +117,11 @@ namespace GTR {
 		float DoF_minDist = 1;
 		float DoF_maxDist = 10;
 		Vector2 DoF_focusPoint;
+
+		LUTTypes Luttype= LUTTypes::BleachBypass;
+		float LUTmix = .5;
+
+		
 
 		float bright_color_threshold = .7;
 
@@ -139,6 +163,9 @@ namespace GTR {
 
 		//add here your functions
 		//...
+
+		void loadLUTTextures();
+		Texture* getLUTTexture(LUTTypes type);
 
 		Renderer();
 

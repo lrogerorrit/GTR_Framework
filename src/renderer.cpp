@@ -45,6 +45,29 @@ bool lightSort(const GTR::LightEntity* a, const GTR::LightEntity* b) {
 
 
 
+void GTR::Renderer::loadLUTTextures()
+{
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Bleach_Bypass.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Bleak.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Candle_Light.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Foggy_Night.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Horror.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Late_Night.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Leave_Blue.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Leave_Green.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Leave_Red.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Sunset.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Teal_Orange.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Teal_Orange_Contrast.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Teal_Orange_Low_Contrast.png"));
+	LUTTextures.push_back(Texture::Get("data/textures/LUT/Vintage.png"));
+}
+
+Texture* GTR::Renderer::getLUTTexture(LUTTypes type)
+{
+	return LUTTextures[(int)type];
+}
+
 GTR::Renderer::Renderer()
 {
 	int width = Application::instance->window_width;
@@ -55,6 +78,8 @@ GTR::Renderer::Renderer()
 		width,
 		height
 	);
+
+	loadLUTTextures();
 	
 
 	this->shadowMapAtlas = new shadowAtlas();
@@ -892,12 +917,58 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 bool GTR::Renderer::applyFX(Camera* camera, Texture* color_texture, Texture* depth_texture)
 {
 	Texture* current_texture = color_texture;
+	Vector2 res = Vector2(current_texture->width, current_texture->height);
 	Vector2 iRes=Vector2(1.0 / (float)current_texture->width, 1.0 / (float)current_texture->height);
+	
 	Matrix44 invVP = camera->viewprojection_matrix;
 	invVP.inverse();
 	FBO* fbo = NULL;
 	Shader* shader=NULL;
 	bool appliedEffect = false;
+
+	if (useLUT) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("LUT");
+		shader->enable();
+		std::cout << "LUT Type: " << (int)Luttype << "         \r";
+		shader->setUniform("u_textureB", getLUTTexture(Luttype),1);
+		shader->setUniform("u_amount", LUTmix);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);		
+	}
+
+	if (useFXAA) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("FXAA");
+		shader->enable();
+		shader->setUniform("u_viewportSize",res );
+		shader->setUniform("u_iViewportSize", iRes);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	if (useGrain) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("grain");
+		shader->enable();
+		float random= (float)rand() / (float)RAND_MAX;
+		shader->setUniform("displ", Vector2(random, random));
+		shader->setUniform("u_resolution", res);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	
 	if (useBloom) {
 		appliedEffect = true;
 		fbo= Texture::getGlobalFBO(postFX_textureA);
