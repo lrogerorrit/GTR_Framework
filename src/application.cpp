@@ -334,6 +334,9 @@ void Application::renderDebugGUI(void)
 		ImGui::Checkbox("Use Volumetric", &renderer->useVolumetric);
 		if(renderer->useVolumetric)
 			ImGui::SliderFloat("Air density", &renderer->airDensity, 0.0, 5.0,"%.4f");
+		ImGui::Checkbox("Use Bloom", &renderer->useBloom);
+		if(renderer->useBloom)
+			ImGui::SliderFloat("Bloom Threshold", &renderer->bright_color_threshold, 0.0, 1.0,"%.4f");
 		ImGui::Checkbox("Use DoF", &renderer->useDoF);
 		if (renderer->useDoF) {
 			ImGui::SliderFloat("Min Dist", &renderer->DoF_minDist, 0, 1000);

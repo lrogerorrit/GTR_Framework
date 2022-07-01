@@ -474,6 +474,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 			GL_UNSIGNED_BYTE,
 			true);
 		
+		postFX_textureA = new Texture(width, height, GL_RGB, GL_FLOAT, false);
+		postFX_textureB = new Texture(width, height, GL_RGB, GL_FLOAT, false);
+		postFX_textureC = new Texture(width, height, GL_RGB, GL_FLOAT, false);
+		
 	}
 	//bind the texture we want to change
 	gbuffers_fbo->depth_texture->bind();
@@ -815,8 +819,10 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		glBlendFunc(GL_ONE, GL_ONE);
 
 	}
+	
+	bool appliedFX = applyFX(camera, (useTonemapper && useHDR) ? tonemapper_fbo->color_textures[0] : illumination_fbo->color_textures[0], gbuffers_fbo->depth_texture);
 
-	if (useDoF) {
+	/*if (useDoF) {
 		DoF_fbo->bind();
 		//Blur Pass;
 		glClear(GL_DEPTH_BUFFER_BIT);
@@ -827,7 +833,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		//glDisable(GL_DEPTH_TEST);
 		glDisable(GL_BLEND);
 		shader->setUniform("u_inverse_viewprojection", inv_vp);
-		shader->setUniform("colTexture", (useTonemapper && useHDR)?tonemapper_fbo->color_textures[0]:illumination_fbo->color_textures[0], 0);
+		shader->setUniform("u_texture", (useTonemapper && useHDR)?tonemapper_fbo->color_textures[0]:illumination_fbo->color_textures[0], 0);
 		shader->setUniform("u_iRes", Vector2(1.0 / (float)DoF_fbo->color_textures[0]->width,1.0 / (float)DoF_fbo->color_textures[0]->height));
 		shader->setUniform("parameters",Vector2(4.0, 1));
 		quad->render(GL_TRIANGLES);
@@ -855,7 +861,7 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 		DoF_fbo->unbind();
 		glDisable(GL_BLEND);
 		DoF_fbo->color_textures[1]->toViewport();
-	}
+	}*/
 
 	if (showGBuffers) {
 		glViewport(0, height * .5, width * .5, height * .5);
@@ -881,6 +887,104 @@ void GTR::Renderer::RenderDeferred(Camera* camera, GTR::Scene* scene)
 	}
 	
 	
+}
+
+bool GTR::Renderer::applyFX(Camera* camera, Texture* color_texture, Texture* depth_texture)
+{
+	Texture* current_texture = color_texture;
+	Vector2 iRes=Vector2(1.0 / (float)current_texture->width, 1.0 / (float)current_texture->height);
+	Matrix44 invVP = camera->viewprojection_matrix;
+	invVP.inverse();
+	FBO* fbo = NULL;
+	Shader* shader=NULL;
+	bool appliedEffect = false;
+	if (useBloom) {
+		appliedEffect = true;
+		fbo= Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("brightFilter");
+		shader->enable();
+		shader->setUniform("u_threshold", bright_color_threshold);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+		for (int i = 0; i < 5; ++i) {
+			fbo = Texture::getGlobalFBO(postFX_textureA);
+			fbo->bind();
+			shader = Shader::Get("blur");
+			shader->enable();
+			shader->setUniform("u_iRes", iRes);
+			current_texture->toViewport(shader);
+			fbo->unbind();
+			current_texture = postFX_textureA;
+			std::swap(postFX_textureA, postFX_textureB);
+		}
+		
+		fbo= Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("mix");
+		shader->enable();
+		shader->setUniform("u_otherTexture",color_texture,1);
+		postFX_textureB->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+	}
+	
+	if (useDoF) {
+		appliedEffect = true;
+		fbo = Texture::getGlobalFBO(postFX_textureC);
+		fbo->bind();
+		current_texture->toViewport();
+		fbo->unbind();		
+		for (int i = 0; i < 5; ++i) {
+			fbo = Texture::getGlobalFBO(postFX_textureA);
+			fbo->bind();
+			shader = Shader::Get("blur");
+			shader->enable();
+			shader->setUniform("u_iRes", iRes);
+			current_texture->toViewport(shader);
+			fbo->unbind();
+			current_texture= postFX_textureA;
+			std::swap(postFX_textureA, postFX_textureB);
+		}
+		fbo = Texture::getGlobalFBO(postFX_textureA);
+		fbo->bind();
+		shader = Shader::Get("depthOfField");
+		shader->enable();
+		shader->setUniform("u_iRes", iRes);
+		shader->setUniform("u_inverse_viewprojection", invVP);
+		shader->setUniform("u_depth_texture", depth_texture, 1);
+		shader->setUniform("focusTexture", postFX_textureC, 2);
+		shader->setUniform("focusPoint", DoF_focusPoint);
+		shader->setUniform("nearFar", Vector2(camera->near_plane, camera->far_plane));
+		shader->setUniform("u_minDistance", DoF_minDist);
+		shader->setUniform("u_maxDistance", DoF_maxDist);
+		current_texture->toViewport(shader);
+		fbo->unbind();
+		current_texture = postFX_textureA;
+		std::swap(postFX_textureA, postFX_textureB);
+	}
+	
+	if(appliedEffect)
+		current_texture->toViewport();
+	fbo = Texture::getGlobalFBO(postFX_textureA);
+	fbo->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+	fbo->unbind();
+	fbo = Texture::getGlobalFBO(postFX_textureB);
+	fbo->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+	fbo->unbind();
+	fbo = Texture::getGlobalFBO(postFX_textureC);
+	fbo->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+	fbo->unbind();
+	
+	
+	
+	
+	return appliedEffect;
 }
 
 //renders all the prefab

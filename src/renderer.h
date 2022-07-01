@@ -70,7 +70,13 @@ namespace GTR {
 		bool useIrr = false;
 		bool useReflections = true;
 		bool useVolumetric = true;
-		bool useDoF = true;
+
+		
+		
+		bool useDoF = false;
+		bool useBloom = false;
+		bool useFXAA = false;
+		bool useLUT = false;
 
 		bool showAtlas = false;
 		bool showGBuffers = false;
@@ -93,6 +99,8 @@ namespace GTR {
 		float DoF_maxDist = 10;
 		Vector2 DoF_focusPoint;
 
+		float bright_color_threshold = .7;
+
 		ReflectionProbeEntity* probe=NULL;
 		
 		Mesh* cube;
@@ -110,13 +118,19 @@ namespace GTR {
 		FBO* reflection_fbo = NULL;
 		FBO* volumetric_fbo = NULL;
 		FBO* DoF_fbo = NULL;
+		FBO* FBX = NULL;
 		
 		Texture* irr_probe_texture = NULL;
 		Texture* skybox = NULL;
 		
+		Texture* postFX_textureA;
+		Texture* postFX_textureB;
+		Texture* postFX_textureC;
+		
 		Vector3 irr_probe_dim;
 		Vector3 start_irr;
 		Vector3 end_irr;
+		
 
 		float irrMultiplier = 1.0;
 		
@@ -136,6 +150,8 @@ namespace GTR {
 		void RenderForward(Camera* camera, GTR::Scene* scene);
 		void renderSSAO(Camera* cam, GTR::Scene* scene, Matrix44& invVP, Mesh* quad);
 		void RenderDeferred(Camera* camera, GTR::Scene* scene);
+		
+		bool applyFX(Camera* camera, Texture* color_texture, Texture* depth_texture);
 		
 	
 		//to render a whole prefab (with all its nodes)
